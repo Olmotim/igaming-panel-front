@@ -1,50 +1,53 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "../context/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 
-export default function LoginPage() {
-  const { login } = useAuth();
-  const searchParams = useSearchParams();
+export default function RegisterPage() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    if (searchParams.get("registered") === "true") {
-      setSuccess("Cuenta creada correctamente. Inicia sesión.");
-    }
-  }, [searchParams]);
+async function handleSubmit(e: React.FormEvent) {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError("");
-    setSuccess("");
-    setLoading(true);
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-    try {
-      await login(email, password);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al iniciar sesión");
-    } finally {
-      setLoading(false);
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.message || "Error al registrarse");
+      return;
     }
+
+    router.push("/login?registered=true");
+  } catch {
+    setError("No se pudo conectar con el servidor");
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle className="text-2xl">Iniciar sesión</CardTitle>
-          <CardDescription>Accede al panel de gestión</CardDescription>
+          <CardTitle className="text-2xl">Crear cuenta</CardTitle>
+          <CardDescription>Regístrate para acceder al panel</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -70,19 +73,16 @@ export default function LoginPage() {
                 required
               />
             </div>
-            {success && (
-              <p className="text-sm text-green-500">{success}</p>
-            )}
             {error && (
               <p className="text-sm text-red-500">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Entrando..." : "Entrar"}
+              {loading ? "Registrando..." : "Crear cuenta"}
             </Button>
             <p className="text-sm text-center text-muted-foreground">
-              ¿No tienes cuenta?{" "}
-              <Link href="/register" className="underline">
-                Regístrate
+              ¿Ya tienes cuenta?{" "}
+              <Link href="/login" className="underline">
+                Inicia sesión
               </Link>
             </p>
           </form>
