@@ -47,25 +47,25 @@ function LoginForm() {
           <span className="text-primary font-bold text-xl tracking-tight">⬡ iGaming Panel</span>
         </div>
         <div className="space-y-6">
-          <h1 className="text-4xl font-bold leading-tight">
-            Panel de operaciones <span className="text-primary">iGaming</span>
-          </h1>
-          <p className="text-muted-foreground text-lg leading-relaxed">
-            Gestión centralizada de equipos, jugadores y operaciones para operadores de casino online.
-          </p>
-          <div className="space-y-3">
-            {[
-              "Gestión de equipos y tareas",
-              "Control de jugadores y estados",
-              "Panel de administración con roles",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                <span className="text-sm text-muted-foreground">{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
+  <h1 className="text-3xl font-bold leading-tight">
+    Bienvenido al sistema de gestión
+  </h1>
+  <p className="text-muted-foreground leading-relaxed">
+    Acceso exclusivo para personal autorizado. Si no tienes credenciales, contacta con tu administrador.
+  </p>
+  <div className="space-y-3">
+    {[
+      "Solo personal interno autorizado",
+      "Todas las acciones quedan registradas",
+      "Ante problemas de acceso contacta con soporte",
+    ].map((item) => (
+      <div key={item} className="flex items-center gap-3">
+        <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+        <span className="text-sm text-muted-foreground">{item}</span>
+      </div>
+    ))}
+  </div>
+</div>
         <p className="text-xs text-muted-foreground">© 2026 iGaming Panel</p>
       </div>
 
