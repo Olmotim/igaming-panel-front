@@ -3,8 +3,8 @@
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import Navbar from "@/components/Navbar";
 
 interface User {
   id: number;
@@ -14,7 +14,7 @@ interface User {
 }
 
 export default function AdminPage() {
-  const { user, accessToken, logout, loading } = useAuth();
+  const { user, accessToken, loading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
@@ -52,44 +52,72 @@ export default function AdminPage() {
     );
   }
 
+  const admins = users.filter(u => u.role === "admin").length;
+  const regularUsers = users.filter(u => u.role === "user").length;
+
   return (
-    <div className="min-h-screen bg-background p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold">Panel de administración</h1>
-          <Button variant="outline" onClick={logout}>
-            Cerrar sesión
-          </Button>
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        <div>
+          <h2 className="text-2xl font-bold">Panel de administración</h2>
+          <p className="text-muted-foreground mt-1">Gestión de usuarios del sistema</p>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Total usuarios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{users.length}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Administradores</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-primary">{admins}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Usuarios</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{regularUsers}</p>
+            </CardContent>
+          </Card>
         </div>
         <Card>
           <CardHeader>
-            <CardTitle>Usuarios registrados ({users.length})</CardTitle>
+            <CardTitle className="text-base">Usuarios registrados</CardTitle>
           </CardHeader>
           <CardContent>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b">
-                  <th className="text-left py-2">ID</th>
-                  <th className="text-left py-2">Email</th>
-                  <th className="text-left py-2">Rol</th>
-                  <th className="text-left py-2">Registro</th>
+                <tr className="border-b border-border/50">
+                  <th className="text-left py-3 text-muted-foreground font-medium">ID</th>
+                  <th className="text-left py-3 text-muted-foreground font-medium">Email</th>
+                  <th className="text-left py-3 text-muted-foreground font-medium">Rol</th>
+                  <th className="text-left py-3 text-muted-foreground font-medium">Registro</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b">
-                    <td className="py-2">{u.id}</td>
-                    <td className="py-2">{u.email}</td>
-                    <td className="py-2">
+                  <tr key={u.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
+                    <td className="py-3 text-muted-foreground">#{u.id}</td>
+                    <td className="py-3 font-medium">{u.email}</td>
+                    <td className="py-3">
                       <span className={`px-2 py-1 rounded text-xs font-medium ${
                         u.role === "admin"
-                          ? "bg-purple-100 text-purple-700"
-                          : "bg-gray-100 text-gray-700"
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted text-muted-foreground"
                       }`}>
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-2">
+                    <td className="py-3 text-muted-foreground">
                       {new Date(u.createdAt).toLocaleDateString("es-ES")}
                     </td>
                   </tr>
@@ -98,7 +126,7 @@ export default function AdminPage() {
             </table>
           </CardContent>
         </Card>
-      </div>
+      </main>
     </div>
   );
 }
