@@ -18,6 +18,9 @@ export default function Navbar() {
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
               Dashboard
             </Link>
+            <Link href="/players" className="text-muted-foreground hover:text-foreground transition-colors">
+              Jugadores
+            </Link>
             {user?.role === "admin" && (
               <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
                 Admin

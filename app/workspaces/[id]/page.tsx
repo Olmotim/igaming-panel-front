@@ -16,18 +16,17 @@ interface Task {
   assignee: { id: number; email: string } | null;
 }
 
+interface Member {
+  role: string;
+  user: { id: number; email: string };
+}
+
 interface Workspace {
   id: number;
   name: string;
-  members: { role: string; user: { id: number; email: string } }[];
+  members: Member[];
   tasks: Task[];
 }
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: "Pendiente",
-  in_progress: "En progreso",
-  done: "Completada",
-};
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "bg-muted text-muted-foreground",
@@ -43,10 +42,15 @@ export default function WorkspacePage() {
 
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [loadingWs, setLoadingWs] = useState(true);
-  const [showForm, setShowForm] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [showMemberForm, setShowMemberForm] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
+  const [newTaskAssignee, setNewTaskAssignee] = useState<number | "">("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
   const [creating, setCreating] = useState(false);
+  const [addingMember, setAddingMember] = useState(false);
+  const [memberError, setMemberError] = useState("");
 
   useEffect(() => {
     if (loading) return;
@@ -85,17 +89,51 @@ export default function WorkspacePage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ title: newTaskTitle, description: newTaskDesc }),
+        body: JSON.stringify({
+          title: newTaskTitle,
+          description: newTaskDesc || undefined,
+          assignedTo: newTaskAssignee || undefined,
+        }),
       });
 
       if (res.ok) {
         setNewTaskTitle("");
         setNewTaskDesc("");
-        setShowForm(false);
+        setNewTaskAssignee("");
+        setShowTaskForm(false);
         fetchWorkspace();
       }
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function addMember(e: React.FormEvent) {
+    e.preventDefault();
+    setMemberError("");
+    setAddingMember(true);
+
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/members`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ email: newMemberEmail }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        setMemberError(data.message || "Error al añadir miembro");
+        return;
+      }
+
+      setNewMemberEmail("");
+      setShowMemberForm(false);
+      fetchWorkspace();
+    } finally {
+      setAddingMember(false);
     }
   }
 
@@ -146,12 +184,42 @@ export default function WorkspacePage() {
               {workspace.members.length} miembro{workspace.members.length !== 1 ? "s" : ""} · Tu rol: <span className="text-primary">{userMember?.role}</span>
             </p>
           </div>
-          <Button size="sm" onClick={() => setShowForm(!showForm)}>
-            {showForm ? "Cancelar" : "+ Nueva tarea"}
-          </Button>
+          <div className="flex gap-2">
+            {isOwner && (
+              <Button size="sm" variant="outline" onClick={() => setShowMemberForm(!showMemberForm)}>
+                {showMemberForm ? "Cancelar" : "+ Miembro"}
+              </Button>
+            )}
+            <Button size="sm" onClick={() => setShowTaskForm(!showTaskForm)}>
+              {showTaskForm ? "Cancelar" : "+ Nueva tarea"}
+            </Button>
+          </div>
         </div>
 
-        {showForm && (
+        {showMemberForm && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Añadir miembro</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={addMember} className="flex gap-2">
+                <Input
+                  placeholder="Email del usuario"
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  required
+                />
+                <Button type="submit" disabled={addingMember}>
+                  {addingMember ? "Añadiendo..." : "Añadir"}
+                </Button>
+              </form>
+              {memberError && <p className="text-sm text-destructive mt-2">{memberError}</p>}
+            </CardContent>
+          </Card>
+        )}
+
+        {showTaskForm && (
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Nueva tarea</CardTitle>
@@ -169,6 +237,18 @@ export default function WorkspacePage() {
                   value={newTaskDesc}
                   onChange={(e) => setNewTaskDesc(e.target.value)}
                 />
+<select
+  value={newTaskAssignee}
+  onChange={(e) => setNewTaskAssignee(e.target.value ? Number(e.target.value) : "")}
+  className="w-full text-sm px-3 py-2 rounded-md bg-muted border border-border text-foreground"
+>
+  <option value="" className="bg-card text-foreground">Sin asignar</option>
+  {workspace.members.map((m) => (
+    <option key={m.user.id} value={m.user.id} className="bg-card text-foreground">
+      {m.user.email} ({m.role})
+    </option>
+  ))}
+</select>
                 <Button type="submit" disabled={creating}>
                   {creating ? "Creando..." : "Crear tarea"}
                 </Button>
@@ -177,47 +257,76 @@ export default function WorkspacePage() {
           </Card>
         )}
 
-        <div className="space-y-3">
-          {workspace.tasks.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">No hay tareas todavía.</p>
-                <p className="text-sm text-muted-foreground mt-1">Crea una para empezar.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            workspace.tasks.map((task) => (
-              <Card key={task.id} className="hover:border-border/80 transition-colors">
-                <CardContent className="py-4 flex items-center justify-between gap-4">
-                  <div className="space-y-1 flex-1">
-                    <p className="font-medium">{task.title}</p>
-                    {task.description && (
-                      <p className="text-sm text-muted-foreground">{task.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={task.status}
-                      onChange={(e) => updateStatus(task.id, e.target.value)}
-                      className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer ${STATUS_COLORS[task.status]}`}
-                    >
-                      <option value="pending">Pendiente</option>
-                      <option value="in_progress">En progreso</option>
-                      <option value="done">Completada</option>
-                    </select>
-                    {isOwner && (
-                      <button
-                        onClick={() => deleteTask(task.id)}
-                        className="text-xs text-muted-foreground hover:text-destructive transition-colors"
-                      >
-                        Eliminar
-                      </button>
-                    )}
-                  </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Tareas</h3>
+            {workspace.tasks.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-muted-foreground">No hay tareas todavía.</p>
                 </CardContent>
               </Card>
-            ))
-          )}
+            ) : (
+              workspace.tasks.map((task) => (
+                <Card key={task.id} className="hover:border-border/80 transition-colors">
+                  <CardContent className="py-4 flex items-center justify-between gap-4">
+                    <div className="space-y-1 flex-1">
+                      <p className="font-medium">{task.title}</p>
+                      {task.description && (
+                        <p className="text-sm text-muted-foreground">{task.description}</p>
+                      )}
+                      {task.assignee && (
+                        <p className="text-xs text-muted-foreground">
+                          Asignada a: <span className="text-primary">{task.assignee.email}</span>
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={task.status}
+                        onChange={(e) => updateStatus(task.id, e.target.value)}
+                        className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer ${STATUS_COLORS[task.status]}`}
+                      >
+                        <option value="pending">Pendiente</option>
+                        <option value="in_progress">En progreso</option>
+                        <option value="done">Completada</option>
+                      </select>
+                      {isOwner && (
+                        <button
+                          onClick={() => deleteTask(task.id)}
+                          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </div>
+
+          <div className="space-y-3">
+            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Miembros</h3>
+            <Card>
+              <CardContent className="py-4 space-y-3">
+                {workspace.members.map((m) => (
+                  <div key={m.user.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{m.user.email}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded font-medium ${
+                      m.role === "owner"
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                    }`}>
+                      {m.role}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>
