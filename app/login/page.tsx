@@ -1,14 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "../context/AuthContext";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Suspense } from "react";
 
 function LoginForm() {
   const { login } = useAuth();
@@ -41,60 +39,83 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 pointer-events-none" />
-      <div className="relative z-10 w-full max-w-md px-4 space-y-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">⬡ iGaming Panel</h1>
-          <p className="text-sm text-muted-foreground">Plataforma de gestión para operadores</p>
+    <div className="min-h-screen flex" style={{
+  background: "radial-gradient(ellipse at 30% 50%, oklch(0.18 0.06 290 / 0.4) 0%, transparent 70%), radial-gradient(ellipse at 80% 20%, oklch(0.16 0.05 310 / 0.3) 0%, transparent 60%)"
+}}>
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 border-r border-border/30">
+        <div>
+          <span className="text-primary font-bold text-xl tracking-tight">⬡ iGaming Panel</span>
         </div>
-        <Card className="border-border/50 shadow-2xl">
-          <CardHeader>
-            <CardTitle className="text-xl">Iniciar sesión</CardTitle>
-            <CardDescription>Accede al panel de gestión</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="tu@email.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
+        <div className="space-y-6">
+          <h1 className="text-4xl font-bold leading-tight">
+            Panel de operaciones <span className="text-primary">iGaming</span>
+          </h1>
+          <p className="text-muted-foreground text-lg leading-relaxed">
+            Gestión centralizada de equipos, jugadores y operaciones para operadores de casino online.
+          </p>
+          <div className="space-y-3">
+            {[
+              "Gestión de equipos y tareas",
+              "Control de jugadores y estados",
+              "Panel de administración con roles",
+            ].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                <span className="text-sm text-muted-foreground">{item}</span>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-              </div>
-              {success && (
-                <p className="text-sm text-green-500">{success}</p>
-              )}
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading ? "Entrando..." : "Entrar"}
-              </Button>
-              <p className="text-sm text-center text-muted-foreground">
-                ¿No tienes cuenta?{" "}
-                <Link href="/register" className="text-primary underline underline-offset-4">
-                  Regístrate
-                </Link>
-              </p>
-            </form>
-          </CardContent>
-        </Card>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-muted-foreground">© 2026 iGaming Panel</p>
+      </div>
+
+      <div className="w-full lg:w-1/2 flex flex-col items-center justify-center p-8">
+        <div className="w-full max-w-sm space-y-8">
+          <div className="space-y-2">
+            <div className="lg:hidden mb-6">
+              <span className="text-primary font-bold text-xl tracking-tight">⬡ iGaming Panel</span>
+            </div>
+            <h2 className="text-2xl font-bold">Acceso al panel</h2>
+            <p className="text-muted-foreground text-sm">Introduce tus credenciales para continuar</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="tu@email.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Contraseña</Label>
+              <Input
+                id="password"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            {success && <p className="text-sm text-green-500">{success}</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Entrando..." : "Entrar"}
+            </Button>
+          </form>
+
+          <p className="text-sm text-center text-muted-foreground">
+            ¿No tienes cuenta?{" "}
+            <Link href="/register" className="text-primary underline underline-offset-4">
+              Regístrate
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -104,6 +125,6 @@ export default function LoginPage() {
   return (
     <Suspense>
       <LoginForm />
-    </Suspense>  
-     );
+    </Suspense>
+  );
 }
