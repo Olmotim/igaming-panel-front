@@ -8,8 +8,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Suspense } from "react";
 
-export default function LoginPage() {
+function LoginForm() {
   const { login } = useAuth();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -97,4 +98,12 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>  
+     );
 }
