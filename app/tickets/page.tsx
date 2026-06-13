@@ -192,42 +192,44 @@ export default function TicketsPage() {
         )}
 
         <div className="flex gap-3">
-          <Select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            
-          >
-            <option value="">Todos los estados</option>
-            {Object.entries(STATUS_LABELS).map(([value, label]) => (
-              <option key={value} value={value}>{label}</option>
-            ))}
-          </Select>
-          <Select
-            value={filterDepartment}
-            onChange={(e) => setFilterDepartment(e.target.value)}
-            
-          >
-            <option value="">Todos los departamentos</option>
-            {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-          </Select>
-          <Select
-            value={filterPriority}
-            onChange={(e) => setFilterPriority(e.target.value)}
-            
-          >
-            <option value="">Todas las prioridades</option>
-            <option value="LOW">Baja</option>
-            <option value="MEDIUM">Media</option>
-            <option value="HIGH">Alta</option>
-            <option value="URGENT">Urgente</option>
-          </Select>
-          <Button variant="outline" size="sm" onClick={fetchTickets}>Filtrar</Button>
-          {(filterStatus || filterDepartment || filterPriority) && (
-            <Button variant="ghost" size="sm" onClick={() => {
-              setFilterStatus(""); setFilterDepartment(""); setFilterPriority("");
-            }}>Limpiar</Button>
-          )}
-        </div>
+  <Select
+    value={filterStatus}
+    onChange={(e) => setFilterStatus(e.target.value)}
+  >
+    <option value="">Todos los estados</option>
+    {Object.entries(STATUS_LABELS).map(([value, label]) => (
+      <option key={value} value={value}>{label}</option>
+    ))}
+  </Select>
+
+  {user?.role === "admin" && (
+    <Select
+      value={filterDepartment}
+      onChange={(e) => setFilterDepartment(e.target.value)}
+    >
+      <option value="">Todos los departamentos</option>
+      {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+    </Select>
+  )}
+
+  <Select
+    value={filterPriority}
+    onChange={(e) => setFilterPriority(e.target.value)}
+  >
+    <option value="">Todas las prioridades</option>
+    <option value="LOW">Baja</option>
+    <option value="MEDIUM">Media</option>
+    <option value="HIGH">Alta</option>
+    <option value="URGENT">Urgente</option>
+  </Select>
+
+  <Button variant="outline" size="sm" onClick={fetchTickets}>Filtrar</Button>
+  {(filterStatus || filterDepartment || filterPriority) && (
+    <Button variant="ghost" size="sm" onClick={() => {
+      setFilterStatus(""); setFilterDepartment(""); setFilterPriority("");
+    }}>Limpiar</Button>
+  )}
+</div>
 
         <Card>
           <CardContent className="p-0">

@@ -4,31 +4,31 @@ import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Select } from "@/components/Select";
 import Navbar from "@/components/Navbar";
 
 interface User {
   id: number;
   email: string;
   role: string;
+  department: string | null;
   createdAt: string;
 }
+
+const DEPARTMENTS = ["CS", "RISK", "COMPLIANCE", "PAYMENTS", "RG", "SPORTSBOOK", "AML", "SECOND_LINE", "DOCUMENTS"];
 
 export default function AdminPage() {
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    if (user.role !== "admin") {
-      router.push("/dashboard");
-      return;
-    }
+    if (!user) { router.push("/login"); return; }
+    if (user.role !== "admin") { router.push("/dashboard"); return; }
     fetchUsers();
   }, [user, loading]);
 
@@ -41,6 +41,23 @@ export default function AdminPage() {
       setUsers(data);
     } finally {
       setLoadingUsers(false);
+    }
+  }
+
+  async function updateDepartment(userId: number, department: string) {
+    setUpdatingId(userId);
+    try {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}/department`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ department }),
+      });
+      fetchUsers();
+    } finally {
+      setUpdatingId(null);
     }
   }
 
@@ -63,6 +80,7 @@ export default function AdminPage() {
           <h2 className="text-2xl font-bold">Panel de administración</h2>
           <p className="text-muted-foreground mt-1">Gestión de usuarios del sistema</p>
         </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
             <CardHeader className="pb-2">
@@ -82,13 +100,14 @@ export default function AdminPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Usuarios</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Agentes</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{regularUsers}</p>
             </CardContent>
           </Card>
         </div>
+
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Usuarios registrados</CardTitle>
@@ -100,6 +119,7 @@ export default function AdminPage() {
                   <th className="text-left py-3 text-muted-foreground font-medium">ID</th>
                   <th className="text-left py-3 text-muted-foreground font-medium">Email</th>
                   <th className="text-left py-3 text-muted-foreground font-medium">Rol</th>
+                  <th className="text-left py-3 text-muted-foreground font-medium">Departamento</th>
                   <th className="text-left py-3 text-muted-foreground font-medium">Registro</th>
                 </tr>
               </thead>
@@ -116,6 +136,22 @@ export default function AdminPage() {
                       }`}>
                         {u.role}
                       </span>
+                    </td>
+                    <td className="py-3">
+                      {u.role === "admin" ? (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      ) : (
+                        <Select
+                          value={u.department ?? ""}
+                          onChange={(e) => updateDepartment(u.id, e.target.value)}
+                          className="text-xs"
+                        >
+                          <option value="">Sin departamento</option>
+                          {DEPARTMENTS.map(d => (
+                            <option key={d} value={d}>{d}</option>
+                          ))}
+                        </Select>
+                      )}
                     </td>
                     <td className="py-3 text-muted-foreground">
                       {new Date(u.createdAt).toLocaleDateString("es-ES")}
