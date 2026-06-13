@@ -18,6 +18,9 @@ export default function Navbar() {
             <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
               Dashboard
             </Link>
+            <Link href="/tickets" className="text-muted-foreground hover:text-foreground transition-colors">
+              Tickets
+            </Link>
             <Link href="/players" className="text-muted-foreground hover:text-foreground transition-colors">
               Jugadores
             </Link>
