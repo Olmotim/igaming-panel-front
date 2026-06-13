@@ -4,75 +4,80 @@ import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
 
-interface Workspace {
+interface Ticket {
   id: number;
-  name: string;
+  title: string;
+  priority: string;
+  status: string;
+  department: string;
   createdAt: string;
-  members: { role: string; user: { id: number; email: string } }[];
-  _count: { tasks: number };
+  createdBy: { id: number; email: string };
+  player: { id: number; name: string } | null;
 }
+
+interface Metrics {
+  kpis: {
+    ticketsOpen: number;
+    ticketsUrgent: number;
+    ticketsResolvedToday: number;
+    playersPendingKYC: number;
+  };
+  myTickets: Ticket[];
+  recentTickets: Ticket[];
+  ticketsByDepartment: { department: string; count: number }[];
+}
+
+const PRIORITY_COLORS: Record<string, string> = {
+  LOW: "bg-muted text-muted-foreground",
+  MEDIUM: "bg-blue-500/20 text-blue-400",
+  HIGH: "bg-orange-500/20 text-orange-400",
+  URGENT: "bg-destructive/20 text-destructive",
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  OPEN: "bg-blue-500/20 text-blue-400",
+  IN_PROGRESS: "bg-yellow-500/20 text-yellow-400",
+  PENDING_INFO: "bg-orange-500/20 text-orange-400",
+  RESOLVED: "bg-green-500/20 text-green-400",
+  CLOSED: "bg-muted text-muted-foreground",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  OPEN: "Abierto",
+  IN_PROGRESS: "En progreso",
+  PENDING_INFO: "Esperando info",
+  RESOLVED: "Resuelto",
+  CLOSED: "Cerrado",
+};
 
 export default function DashboardPage() {
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
-  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
-  const [loadingWorkspaces, setLoadingWorkspaces] = useState(true);
-  const [newWorkspaceName, setNewWorkspaceName] = useState("");
-  const [creating, setCreating] = useState(false);
-  const [showForm, setShowForm] = useState(false);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [loadingMetrics, setLoadingMetrics] = useState(true);
 
   useEffect(() => {
     if (loading) return;
-    if (!user) {
-      router.push("/login");
-      return;
-    }
-    fetchWorkspaces();
+    if (!user) { router.push("/login"); return; }
+    fetchMetrics();
   }, [user, loading]);
 
-  async function fetchWorkspaces() {
+  async function fetchMetrics() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/dashboard/metrics`, {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
       const data = await res.json();
-      setWorkspaces(data);
+      setMetrics(data);
     } finally {
-      setLoadingWorkspaces(false);
+      setLoadingMetrics(false);
     }
   }
 
-  async function createWorkspace(e: React.FormEvent) {
-    e.preventDefault();
-    if (!newWorkspaceName.trim()) return;
-    setCreating(true);
-
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ name: newWorkspaceName }),
-      });
-
-      if (res.ok) {
-        setNewWorkspaceName("");
-        setShowForm(false);
-        fetchWorkspaces();
-      }
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  if (loading || loadingWorkspaces) {
+  if (loading || loadingMetrics) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Cargando...</p>
@@ -80,101 +85,125 @@ export default function DashboardPage() {
     );
   }
 
-  if (!user) return null;
+  if (!metrics) return null;
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-8">
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
         <div>
-          <h2 className="text-2xl font-bold">Bienvenido de vuelta</h2>
-          <p className="text-muted-foreground mt-1">Aquí tienes un resumen de tu cuenta</p>
+          <h2 className="text-2xl font-bold">Dashboard</h2>
+          <p className="text-muted-foreground mt-1">Bienvenido de vuelta, {user?.email}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Email</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tickets abiertos</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-lg font-semibold">{user.email}</p>
+              <p className="text-3xl font-bold text-blue-400">{metrics.kpis.ticketsOpen}</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Rol</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Tickets urgentes</CardTitle>
             </CardHeader>
             <CardContent>
-              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                user.role === "admin"
-                  ? "bg-primary/20 text-primary"
-                  : "bg-muted text-muted-foreground"
-              }`}>
-                {user.role}
-              </span>
+              <p className="text-3xl font-bold text-destructive">{metrics.kpis.ticketsUrgent}</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Workspaces</CardTitle>
+              <CardTitle className="text-sm font-medium text-muted-foreground">Resueltos hoy</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">{workspaces.length}</p>
+              <p className="text-3xl font-bold text-green-400">{metrics.kpis.ticketsResolvedToday}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Jugadores pendientes KYC</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-primary">{metrics.kpis.playersPendingKYC}</p>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Tus workspaces</h3>
-            <Button size="sm" onClick={() => setShowForm(!showForm)}>
-              {showForm ? "Cancelar" : "+ Nuevo workspace"}
-            </Button>
-          </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Mis tickets asignados</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {metrics.myTickets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No tienes tickets asignados.</p>
+              ) : (
+                <div className="space-y-3">
+                  {metrics.myTickets.map(ticket => (
+                    <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
+                      <div className="flex items-center justify-between py-2 border-b border-border/30 hover:bg-muted/20 rounded px-2 transition-colors">
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-medium">{ticket.title}</p>
+                          <p className="text-xs text-muted-foreground">{ticket.department} · {ticket.player?.name ?? "Sin jugador"}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${PRIORITY_COLORS[ticket.priority]}`}>
+                          {ticket.priority}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-          {showForm && (
-            <form onSubmit={createWorkspace} className="flex gap-2">
-              <Input
-                placeholder="Nombre del workspace"
-                value={newWorkspaceName}
-                onChange={(e) => setNewWorkspaceName(e.target.value)}
-                required
-              />
-              <Button type="submit" disabled={creating}>
-                {creating ? "Creando..." : "Crear"}
-              </Button>
-            </form>
-          )}
-
-          {workspaces.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-muted-foreground">No tienes workspaces todavía.</p>
-                <p className="text-sm text-muted-foreground mt-1">Crea uno para empezar a gestionar tareas.</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {workspaces.map((ws) => (
-                <Link key={ws.id} href={`/workspaces/${ws.id}`}>
-                  <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-                    <CardHeader className="pb-2">
-                      <CardTitle className="text-base">{ws.name}</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-1">
-                      <p className="text-sm text-muted-foreground">
-                        {ws.members.length} miembro{ws.members.length !== 1 ? "s" : ""}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {ws._count.tasks} tarea{ws._count.tasks !== 1 ? "s" : ""}
-                      </p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              ))}
-            </div>
-          )}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Actividad reciente</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {metrics.recentTickets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No hay tickets recientes.</p>
+              ) : (
+                <div className="space-y-3">
+                  {metrics.recentTickets.map(ticket => (
+                    <Link key={ticket.id} href={`/tickets/${ticket.id}`}>
+                      <div className="flex items-center justify-between py-2 border-b border-border/30 hover:bg-muted/20 rounded px-2 transition-colors">
+                        <div className="space-y-0.5">
+                          <p className="text-sm font-medium">{ticket.title}</p>
+                          <p className="text-xs text-muted-foreground">{ticket.createdBy.email} · {new Date(ticket.createdAt).toLocaleDateString("es-ES")}</p>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[ticket.status]}`}>
+                          {STATUS_LABELS[ticket.status]}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
+
+        {metrics.ticketsByDepartment.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Tickets abiertos por departamento</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {metrics.ticketsByDepartment.map(item => (
+                  <div key={item.department} className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/30">
+                    <span className="text-sm font-medium">{item.department}</span>
+                    <span className="text-lg font-bold text-primary">{item.count}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );
