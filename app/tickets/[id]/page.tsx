@@ -27,7 +27,7 @@ interface Ticket {
   resolvedAt: string | null;
   createdBy: { id: number; email: string };
   assignedTo: { id: number; email: string } | null;
-  player: { id: number; name: string; email: string } | null;
+  player: { id: number; firstName: string; lastName: string; email: string } | null;
   comments: Comment[];
 }
 
@@ -303,7 +303,7 @@ export default function TicketPage() {
                   <CardTitle className="text-base">Jugador vinculado</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <p className="font-medium">{ticket.player.name}</p>
+                  <p className="font-medium">{ticket.player.firstName} {ticket.player.lastName}</p>
                   <p className="text-muted-foreground">{ticket.player.email}</p>
                   <button
                     onClick={() => router.push(`/players/${ticket.player!.id}`)}

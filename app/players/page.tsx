@@ -12,7 +12,8 @@ import Link from "next/link";
 interface Player {
   id: number;
   email: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   status: string;
   createdAt: string;
   _count: { notes: number };
@@ -38,7 +39,8 @@ export default function PlayersPage() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [newEmail, setNewEmail] = useState("");
-  const [newName, setNewName] = useState("");
+  const [newFirstName, setNewFirstName] = useState("");
+  const [newLastName, setNewLastName] = useState("");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
@@ -85,7 +87,7 @@ export default function PlayersPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${accessToken}`,
         },
-        body: JSON.stringify({ email: newEmail, name: newName }),
+        body: JSON.stringify({ email: newEmail, firstName: newFirstName, lastName: newLastName }),
       });
 
       const data = await res.json();
@@ -96,7 +98,8 @@ export default function PlayersPage() {
       }
 
       setNewEmail("");
-      setNewName("");
+      setNewFirstName("");
+      setNewLastName("");
       setShowForm(false);
       fetchPlayers();
     } finally {
@@ -133,12 +136,20 @@ export default function PlayersPage() {
             </CardHeader>
             <CardContent>
               <form onSubmit={createPlayer} className="space-y-3">
-                <Input
-                  placeholder="Nombre completo"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  required
-                />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input
+                    placeholder="Nombre"
+                    value={newFirstName}
+                    onChange={(e) => setNewFirstName(e.target.value)}
+                    required
+                  />
+                  <Input
+                    placeholder="Apellidos"
+                    value={newLastName}
+                    onChange={(e) => setNewLastName(e.target.value)}
+                    required
+                  />
+                </div>
                 <Input
                   placeholder="Email"
                   type="email"
@@ -195,7 +206,7 @@ export default function PlayersPage() {
                       <td className="px-6 py-3 text-muted-foreground">#{player.id}</td>
                       <td className="px-6 py-3 font-medium">
                         <Link href={`/players/${player.id}`} className="hover:text-primary transition-colors">
-                          {player.name}
+                          {player.firstName} {player.lastName}
                         </Link>
                       </td>
                       <td className="px-6 py-3 text-muted-foreground">{player.email}</td>

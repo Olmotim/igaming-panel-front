@@ -20,7 +20,7 @@ interface Ticket {
   resolvedAt: string | null;
   createdBy: { id: number; email: string };
   assignedTo: { id: number; email: string } | null;
-  player: { id: number; name: string; email: string } | null;
+  player: { id: number; firstName: string; lastName: string; email: string } | null;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -270,7 +270,7 @@ export default function TicketsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-3 text-muted-foreground">
-                        {ticket.player ? ticket.player.name : "—"}
+                        {ticket.player ? `${ticket.player.firstName} ${ticket.player.lastName}` : "—"}
                       </td>
                       <td className="px-6 py-3 text-muted-foreground">
                         {new Date(ticket.createdAt).toLocaleDateString("es-ES")}
