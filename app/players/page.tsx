@@ -1,13 +1,14 @@
 "use client";
 
 import { useAuth } from "../context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
+
 
 interface Player {
   id: number;
@@ -34,6 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
 export default function PlayersPage() {
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [players, setPlayers] = useState<Player[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [search, setSearch] = useState("");
@@ -44,14 +46,20 @@ export default function PlayersPage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.push("/login");
-      return;
-    }
+useEffect(() => {
+  if (loading) return;
+  if (!user) {
+    router.push("/login");
+    return;
+  }
+  const urlSearch = searchParams.get("search");
+  if (urlSearch) {
+    setSearch(urlSearch);
+    fetchPlayers(urlSearch);
+  } else {
     fetchPlayers();
-  }, [user, loading]);
+  }
+}, [user, loading]);
 
   async function fetchPlayers(searchTerm?: string) {
     try {
