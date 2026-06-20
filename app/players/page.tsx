@@ -27,12 +27,14 @@ const STATUS_LABELS: Record<string, string> = {
   pending_verification: "Pendiente",
   active: "Activo",
   suspended: "Suspendido",
+  self_excluded: "Autoexcluido"
 };
 
 const STATUS_COLORS: Record<string, string> = {
   pending_verification: "bg-primary/20 text-primary",
   active: "bg-green-500/20 text-green-400",
   suspended: "bg-destructive/20 text-destructive",
+  self_excluded: "bg-destructive/20 text-destructive",
 };
 
 function PlayersContent() {

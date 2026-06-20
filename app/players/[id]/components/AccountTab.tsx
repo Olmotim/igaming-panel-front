@@ -46,6 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
   pending_verification: "Pendiente de verificación",
   active: "Activo",
   suspended: "Suspendido",
+  self_excluded: "Autoexcluido"
 };
 
 const RISK_LABELS: Record<string, string> = {
@@ -233,15 +234,18 @@ export default function AccountTab({ player, accessToken, onUpdate }: AccountTab
   <CardContent className="space-y-4">
     <div>
       <p className="text-muted-foreground text-xs mb-1">Estado de la cuenta</p>
-      <Select
-        value={player.status}
-        onChange={(e) => updateStatus(e.target.value)}
-        className="w-full"
-      >
-        {Object.entries(STATUS_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>{label}</option>
-        ))}
-      </Select>
+<Select
+  value={player.status}
+  onChange={(e) => updateStatus(e.target.value)}
+  className="w-full"
+  disabled={player.status === "self_excluded"}
+>
+  {Object.entries(STATUS_LABELS)
+    .filter(([value]) => value !== "self_excluded" || player.status === "self_excluded")
+    .map(([value, label]) => (
+      <option key={value} value={value}>{label}</option>
+    ))}
+</Select>
     </div>
 
     <div className="flex gap-2">
