@@ -2,7 +2,7 @@
 
 import { useAuth } from "../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense  } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,7 +35,7 @@ const STATUS_COLORS: Record<string, string> = {
   suspended: "bg-destructive/20 text-destructive",
 };
 
-export default function PlayersPage() {
+function PlayersContent() {
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -248,5 +248,13 @@ useEffect(() => {
         </Card>
       </main>
     </div>
+  );
+}
+
+export default function PlayersPage() {
+  return (
+    <Suspense>
+      <PlayersContent />
+    </Suspense>
   );
 }
