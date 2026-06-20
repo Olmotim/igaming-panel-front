@@ -60,6 +60,7 @@ interface Player {
   createdAt: string;
   notes: Note[];
   tickets: Ticket[];
+  rgLimits: { id: number; type: string; status: string; excludedUntil: string | null }[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -90,6 +91,7 @@ const TABS = [
   { key: "rg", label: "Juego Responsable" },
   { key: "login", label: "Accesos" },
   { key: "tickets", label: "Tickets" },
+  
 ];
 
 
@@ -183,6 +185,28 @@ export default function PlayerPage() {
               </span>
             </div>
           </div>
+          {(() => {
+  const activeExclusion = player.rgLimits.find(l => l.type === "SELF_EXCLUSION" && l.status === "ACTIVE");
+  const hasAlerts = activeExclusion || player.riskLevel === "HIGH" || player.isPEP;
+
+  if (!hasAlerts) return null;
+
+  return (
+    <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-destructive/10 border border-destructive/30">
+      {activeExclusion && (
+        <span className="text-sm font-medium text-destructive">
+          🚫 Autoexclusión activa{activeExclusion.excludedUntil ? ` hasta ${new Date(activeExclusion.excludedUntil).toLocaleDateString("es-ES")}` : ""}
+        </span>
+      )}
+      {player.riskLevel === "HIGH" && (
+        <span className="text-sm font-medium text-destructive">⚠️ Riesgo alto</span>
+      )}
+      {player.isPEP && (
+        <span className="text-sm font-medium text-destructive">🏛️ PEP</span>
+      )}
+    </div>
+  );
+})()}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">

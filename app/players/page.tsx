@@ -16,8 +16,11 @@ interface Player {
   firstName: string;
   lastName: string;
   status: string;
+  riskLevel: string;
   createdAt: string;
   _count: { notes: number };
+  kyc: { idDocStatus: string; poaDocStatus: string; sofDocStatus: string } | null;
+  rgLimits: { id: number }[];
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -213,9 +216,18 @@ useEffect(() => {
                     <tr key={player.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
                       <td className="px-6 py-3 text-muted-foreground">#{player.id}</td>
                       <td className="px-6 py-3 font-medium">
-                        <Link href={`/players/${player.id}`} className="hover:text-primary transition-colors">
-                          {player.firstName} {player.lastName}
-                        </Link>
+                        <Link href={`/players/${player.id}`} className="hover:text-primary transition-colors flex items-center gap-2">
+                         <span>{player.firstName} {player.lastName}</span>
+                       {player.rgLimits.length > 0 && (
+                          <span title="Autoexclusión activa">🚫</span>
+                        )}
+                        {(player.kyc?.idDocStatus === "PENDING" || player.kyc?.poaDocStatus === "PENDING" || player.kyc?.sofDocStatus === "PENDING") && (
+                               <span title="KYC pendiente">📄</span>
+                            )}
+                         {player.riskLevel === "HIGH" && (
+                         <span title="Riesgo alto">⚠️</span>
+                               )}
+                                                   </Link>
                       </td>
                       <td className="px-6 py-3 text-muted-foreground">{player.email}</td>
                       <td className="px-6 py-3">
