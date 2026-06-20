@@ -24,6 +24,7 @@ interface Bonus {
 interface BonusesTabProps {
   playerId: number;
   accessToken: string | null;
+  onUpdate: () => void;
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -47,7 +48,7 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "bg-destructive/20 text-destructive",
 };
 
-export default function BonusesTab({ playerId, accessToken }: BonusesTabProps) {
+export default function BonusesTab({ playerId, accessToken, onUpdate }: BonusesTabProps) {
   const [bonuses, setBonuses] = useState<Bonus[]>([]);
   const [loadingBonuses, setLoadingBonuses] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -94,6 +95,7 @@ export default function BonusesTab({ playerId, accessToken }: BonusesTabProps) {
     setForm({ type: "DEPOSIT", description: "", amount: "", wagering: "", maxWinAmount: "", expiresAt: "" });
     setShowForm(false);
     fetchBonuses();
+    onUpdate();
   }
 
   async function updateStatus(bonusId: number, status: string) {
@@ -106,6 +108,7 @@ export default function BonusesTab({ playerId, accessToken }: BonusesTabProps) {
       body: JSON.stringify({ status }),
     });
     fetchBonuses();
+    onUpdate();
   }
 
   if (loadingBonuses) {

@@ -226,31 +226,44 @@ export default function AccountTab({ player, accessToken, onUpdate }: AccountTab
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Permisos de cuenta</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {RESTRICTIONS.map(({ key, label }) => {
-                const value = player[key as keyof Player] as boolean;
-                return (
-                  <button
-                    key={key}
-                    onClick={() => toggleRestriction(key, !value)}
-                    className={`px-3 py-2 rounded-lg text-sm font-medium text-left transition-colors ${
-                      value
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-destructive/20 text-destructive"
-                    }`}
-                  >
-                    {label}: {value ? "Permitido" : "Bloqueado"}
-                  </button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
+<Card>
+  <CardHeader>
+    <CardTitle className="text-base">Estado y permisos</CardTitle>
+  </CardHeader>
+  <CardContent className="space-y-4">
+    <div>
+      <p className="text-muted-foreground text-xs mb-1">Estado de la cuenta</p>
+      <Select
+        value={player.status}
+        onChange={(e) => updateStatus(e.target.value)}
+        className="w-full"
+      >
+        {Object.entries(STATUS_LABELS).map(([value, label]) => (
+          <option key={value} value={value}>{label}</option>
+        ))}
+      </Select>
+    </div>
+
+    <div className="flex gap-2">
+      {RESTRICTIONS.map(({ key, label }) => {
+        const value = player[key as keyof Player] as boolean;
+        return (
+          <button
+            key={key}
+            onClick={() => toggleRestriction(key, !value)}
+            className={`flex-1 px-3 py-3 rounded-lg text-sm font-semibold text-center transition-colors ${
+              value
+                ? "bg-green-600 text-white hover:bg-green-700"
+                : "bg-destructive text-white hover:bg-destructive/90"
+            }`}
+          >
+            {label}
+          </button>
+        );
+      })}
+    </div>
+  </CardContent>
+</Card>
       </div>
 
       <div className="space-y-4">
@@ -269,29 +282,6 @@ export default function AccountTab({ player, accessToken, onUpdate }: AccountTab
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Estado de cuenta</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {Object.entries(STATUS_LABELS).map(([value, label]) => (
-              <button
-                key={value}
-                onClick={() => updateStatus(value)}
-                disabled={player.status === value}
-                className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
-                  player.status === value
-                    ? "bg-primary/20 text-primary cursor-default"
-                    : "hover:bg-muted/50 text-muted-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </CardContent>
-        </Card>
-
         <Card>
           <CardHeader>
             <CardTitle className="text-base">AML / Risk</CardTitle>

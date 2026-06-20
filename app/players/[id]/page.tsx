@@ -12,6 +12,7 @@ import KYCTab from "./components/KYCTab";
 import PaymentsTab from "./components/PaymentsTab";
 import BonusesTab from "./components/BonusesTab";
 import RGTab from "./components/RGTab";
+import LoginHistoryTab from "./components/LoginHistoryTab";
 
 interface Note {
   id: number;
@@ -87,9 +88,10 @@ const TABS = [
   { key: "payments", label: "Pagos" },
   { key: "bonuses", label: "Bonos" },
   { key: "rg", label: "Juego Responsable" },
-  { key: "notes", label: "Notas" },
+  { key: "login", label: "Accesos" },
   { key: "tickets", label: "Tickets" },
 ];
+
 
 export default function PlayerPage() {
   const { user, accessToken, loading } = useAuth();
@@ -102,6 +104,7 @@ export default function PlayerPage() {
   const [activeTab, setActiveTab] = useState("account");
   const [newNote, setNewNote] = useState("");
   const [addingNote, setAddingNote] = useState(false);
+  const [showNoteForm, setShowNoteForm] = useState(false);
 
   useEffect(() => {
     if (loading) return;
@@ -161,7 +164,7 @@ export default function PlayerPage() {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-6 py-8 space-y-6">
         <div>
           <button onClick={() => router.push("/players")} className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1">
             ← Volver a jugadores
@@ -182,112 +185,128 @@ export default function PlayerPage() {
           </div>
         </div>
 
-        <div className="flex gap-1 border-b border-border/50 overflow-x-auto">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
-                activeTab === tab.key
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* Contenido principal con tabs */}
+          <div className="lg:col-span-4 space-y-4">
+            <div className="flex gap-1 border-b border-border/50 overflow-x-auto">
+              {TABS.map(tab => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-4 py-2 text-sm font-medium whitespace-nowrap transition-colors border-b-2 ${
+                    activeTab === tab.key
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
 
-        <div>
-          {activeTab === "account" && (
-            <AccountTab player={player} accessToken={accessToken} onUpdate={fetchPlayer} />
-          )}
+            <div>
+              {activeTab === "account" && (
+                <AccountTab player={player} accessToken={accessToken} onUpdate={fetchPlayer} />
+              )}
 
-          {activeTab === "kyc" && (
-            <KYCTab playerId={player.id} accessToken={accessToken} />
-          )}
+              {activeTab === "kyc" && (
+                <KYCTab playerId={player.id} accessToken={accessToken} />
+              )}
 
-          {activeTab === "payments" && (
-            <PaymentsTab playerId={player.id} accessToken={accessToken} />
-          )}
+              {activeTab === "payments" && (
+                <PaymentsTab playerId={player.id} accessToken={accessToken} onUpdate={fetchPlayer} />
+              )}
 
-          {activeTab === "bonuses" && (
-            <BonusesTab playerId={player.id} accessToken={accessToken} />
-          )}
+              {activeTab === "bonuses" && (
+                <BonusesTab playerId={player.id} accessToken={accessToken} onUpdate={fetchPlayer} />
+              )}
 
-          {activeTab === "rg" && (
-            <RGTab playerId={player.id} accessToken={accessToken} />
-          )}
+              {activeTab === "rg" && (
+                <RGTab playerId={player.id} accessToken={accessToken} />
+              )}
 
-          {activeTab === "notes" && (
-            <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Añadir nota interna</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={addNote} className="flex gap-2">
-                    <Input
-                      placeholder="Escribe una nota sobre este jugador..."
-                      value={newNote}
-                      onChange={(e) => setNewNote(e.target.value)}
-                      required
-                    />
-                    <Button type="submit" disabled={addingNote}>
-                      {addingNote ? "..." : "Añadir"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
+              {activeTab === "login" && (
+                <LoginHistoryTab playerId={player.id} accessToken={accessToken} />
+              )}
 
-              <div className="space-y-3">
-                {player.notes.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-6 text-center">
-                      <p className="text-muted-foreground text-sm">No hay notas todavía.</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  player.notes.map((note) => (
-                    <Card key={note.id}>
-                      <CardContent className="py-4 space-y-2">
-                        <p className="text-sm">{note.content}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {note.author.email} · {new Date(note.createdAt).toLocaleDateString("es-ES")}
-                        </p>
+              {activeTab === "tickets" && (
+                <div className="space-y-3">
+                  {player.tickets.length === 0 ? (
+                    <Card>
+                      <CardContent className="py-6 text-center">
+                        <p className="text-muted-foreground text-sm">No hay tickets vinculados a este jugador.</p>
                       </CardContent>
                     </Card>
-                  ))
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "tickets" && (
-            <div className="space-y-3">
-              {player.tickets.length === 0 ? (
-                <Card>
-                  <CardContent className="py-6 text-center">
-                    <p className="text-muted-foreground text-sm">No hay tickets vinculados a este jugador.</p>
-                  </CardContent>
-                </Card>
-              ) : (
-                player.tickets.map((ticket) => (
-                  <Card key={ticket.id} className="cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => router.push(`/tickets/${ticket.id}`)}>
-                    <CardContent className="py-4 flex items-center justify-between">
-                      <div className="space-y-1">
-                        <p className="text-sm font-medium">{ticket.title}</p>
-                        <p className="text-xs text-muted-foreground">{ticket.department} · {new Date(ticket.createdAt).toLocaleDateString("es-ES")}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${TICKET_STATUS_COLORS[ticket.status]}`}>
-                        {ticket.status}
-                      </span>
-                    </CardContent>
-                  </Card>
-                ))
+                  ) : (
+                    player.tickets.map((ticket) => (
+                      <Card key={ticket.id} className="cursor-pointer hover:bg-muted/20 transition-colors" onClick={() => router.push(`/tickets/${ticket.id}`)}>
+                        <CardContent className="py-4 flex items-center justify-between">
+                          <div className="space-y-1">
+                            <p className="text-sm font-medium">{ticket.title}</p>
+                            <p className="text-xs text-muted-foreground">{ticket.department} · {new Date(ticket.createdAt).toLocaleDateString("es-ES")}</p>
+                          </div>
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${TICKET_STATUS_COLORS[ticket.status]}`}>
+                            {ticket.status}
+                          </span>
+                        </CardContent>
+                      </Card>
+                    ))
+                  )}
+                </div>
               )}
             </div>
-          )}
+          </div>
+
+          {/* Sidebar de notas siempre visible */}
+          <div className="lg:col-span-1">
+            <Card className="lg:sticky lg:top-6">
+              <CardHeader>
+                <CardTitle className="text-sm">Notas internas</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {showNoteForm ? (
+  <form onSubmit={async (e) => { await addNote(e); setShowNoteForm(false); }} className="space-y-2">
+    <textarea
+      placeholder="Añadir nota..."
+      value={newNote}
+      onChange={(e) => setNewNote(e.target.value)}
+      required
+      rows={2}
+      autoFocus
+      className="w-full text-sm px-2 py-2 rounded-md bg-input border border-border text-foreground resize-none"
+    />
+    <div className="flex gap-2">
+      <Button type="submit" size="sm" className="flex-1" disabled={addingNote}>
+        {addingNote ? "..." : "Guardar"}
+      </Button>
+      <Button type="button" size="sm" variant="outline" onClick={() => setShowNoteForm(false)}>
+        Cancelar
+      </Button>
+    </div>
+  </form>
+) : (
+  <Button size="sm" variant="outline" className="w-full" onClick={() => setShowNoteForm(true)}>
+    + Añadir nota
+  </Button>
+)}
+
+                <div className="space-y-2 max-h-[500px] overflow-y-auto">
+                  {player.notes.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No hay notas todavía.</p>
+                  ) : (
+                    player.notes.map((note) => (
+                      <div key={note.id} className="p-2 rounded bg-muted/20 space-y-1">
+                        <p className="text-xs">{note.content}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {note.author.email} · {new Date(note.createdAt).toLocaleDateString("es-ES")}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>

@@ -23,6 +23,7 @@ interface Payment {
 interface PaymentsTabProps {
   playerId: number;
   accessToken: string | null;
+  onUpdate: () => void;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,7 +45,7 @@ const TYPE_LABELS: Record<string, string> = {
   WITHDRAWAL: "Retiro",
 };
 
-export default function PaymentsTab({ playerId, accessToken }: PaymentsTabProps) {
+export default function PaymentsTab({ playerId, accessToken, onUpdate }: PaymentsTabProps) {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loadingPayments, setLoadingPayments] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -90,17 +91,18 @@ export default function PaymentsTab({ playerId, accessToken }: PaymentsTabProps)
     fetchPayments();
   }
 
-  async function updateStatus(paymentId: number, status: string) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players/payments/${paymentId}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ status }),
-    });
-    fetchPayments();
-  }
+async function updateStatus(paymentId: number, status: string) {
+  await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players/payments/${paymentId}/status`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ status }),
+  });
+  fetchPayments();
+  onUpdate();
+}
 
   if (loadingPayments) {
     return <p className="text-muted-foreground text-sm">Cargando pagos...</p>;
