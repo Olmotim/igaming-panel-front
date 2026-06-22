@@ -4,6 +4,17 @@ Web interface for an iGaming backoffice panel, built so support, KYC, and admin 
 
 Backend repository: [igaming-panel](https://github.com/Olmotim/igaming-panel)
 
+## Live demo
+
+🔗 **[igaming-panel-front.vercel.app/login](https://igaming-panel-front.vercel.app/login)**
+
+Demo credentials (admin role, fictitious data only):
+
+```
+email:    demo@igamingpanel.com
+password: Demo1234!
+```
+
 ## Stack
 
 - **Next.js** (App Router) + TypeScript
