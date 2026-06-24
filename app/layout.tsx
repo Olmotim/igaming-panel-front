@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "./context/AuthContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const headingFont = Space_Grotesk({
+  variable: "--font-heading",
   subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const bodyFont = IBM_Plex_Sans({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["400", "500", "600"],
+});
+
+const monoFont = IBM_Plex_Mono({
+  variable: "--font-mono",
+  subsets: ["latin"],
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -25,10 +33,10 @@ export default function RootLayout({
 }>) {
   return (
     <html
-  lang="es"
-  className={`${geistSans.variable} ${geistMono.variable} h-full antialiased dark`}
->
-      <body className="min-h-full flex flex-col">
+      lang="es"
+      className={`${headingFont.variable} ${bodyFont.variable} ${monoFont.variable} dark h-full antialiased`}
+    >
+      <body className="flex min-h-full flex-col">
         <AuthProvider>{children}</AuthProvider>
       </body>
     </html>

@@ -7,28 +7,28 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/Select";
 import Navbar from "@/components/Navbar";
-
-interface User {
-  id: number;
-  email: string;
-  role: string;
-  department: string | null;
-  createdAt: string;
-}
-
-const DEPARTMENTS = ["CS", "RISK", "COMPLIANCE", "PAYMENTS", "RG", "SPORTSBOOK", "AML", "SECOND_LINE", "DOCUMENTS"];
+import type { AdminUserRecord } from "@/types/user";
+import { DEPARTMENTS } from "@/lib/constants";
+import { apiFetch, ApiError } from "@/lib/api";
 
 export default function AdminPage() {
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
+  const [users, setUsers] = useState<AdminUserRecord[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (loading) return;
-    if (!user) { router.push("/login"); return; }
-    if (user.role !== "admin") { router.push("/dashboard"); return; }
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    if (user.role !== "ADMIN") {
+      router.push("/dashboard");
+      return;
+    }
     fetchUsers();
   }, [user, loading]);
 
@@ -36,6 +36,7 @@ export default function AdminPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
       });
       const data = await res.json();
       setUsers(data);
@@ -46,16 +47,16 @@ export default function AdminPage() {
 
   async function updateDepartment(userId: number, department: string) {
     setUpdatingId(userId);
+    setError("");
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/admin/users/${userId}/department`, {
+      await apiFetch(`/admin/users/${userId}/department`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ department }),
+        accessToken,
+        body: { department },
       });
       fetchUsers();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al actualizar el departamento");
     } finally {
       setUpdatingId(null);
     }
@@ -63,28 +64,32 @@ export default function AdminPage() {
 
   if (loading || loadingUsers) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
   }
 
-  const admins = users.filter(u => u.role === "admin").length;
-  const regularUsers = users.filter(u => u.role === "user").length;
+  const admins = users.filter((u) => u.role === "ADMIN").length;
+  const regularUsers = users.filter((u) => u.role !== "ADMIN").length;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
         <div>
-          <h2 className="text-2xl font-bold">Panel de administración</h2>
+          <h2 className="font-heading text-2xl font-bold">Panel de administración</h2>
           <p className="text-muted-foreground mt-1">Gestión de usuarios del sistema</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {error && <p className="text-destructive text-sm">{error}</p>}
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Total usuarios</CardTitle>
+              <CardTitle className="text-muted-foreground text-sm font-medium">
+                Total usuarios
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{users.length}</p>
@@ -92,15 +97,17 @@ export default function AdminPage() {
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Administradores</CardTitle>
+              <CardTitle className="text-muted-foreground text-sm font-medium">
+                Administradores
+              </CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-primary">{admins}</p>
+              <p className="text-primary text-3xl font-bold">{admins}</p>
             </CardContent>
           </Card>
           <Card>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">Agentes</CardTitle>
+              <CardTitle className="text-muted-foreground text-sm font-medium">Agentes</CardTitle>
             </CardHeader>
             <CardContent>
               <p className="text-3xl font-bold">{regularUsers}</p>
@@ -115,30 +122,37 @@ export default function AdminPage() {
           <CardContent>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left py-3 text-muted-foreground font-medium">ID</th>
-                  <th className="text-left py-3 text-muted-foreground font-medium">Email</th>
-                  <th className="text-left py-3 text-muted-foreground font-medium">Rol</th>
-                  <th className="text-left py-3 text-muted-foreground font-medium">Departamento</th>
-                  <th className="text-left py-3 text-muted-foreground font-medium">Registro</th>
+                <tr className="border-border/50 border-b">
+                  <th className="text-muted-foreground py-2.5 text-left font-medium">ID</th>
+                  <th className="text-muted-foreground py-2.5 text-left font-medium">Email</th>
+                  <th className="text-muted-foreground py-2.5 text-left font-medium">Rol</th>
+                  <th className="text-muted-foreground py-2.5 text-left font-medium">
+                    Departamento
+                  </th>
+                  <th className="text-muted-foreground py-2.5 text-left font-medium">Registro</th>
                 </tr>
               </thead>
               <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                    <td className="py-3 text-muted-foreground">#{u.id}</td>
-                    <td className="py-3 font-medium">{u.email}</td>
-                    <td className="py-3">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        u.role === "admin"
-                          ? "bg-primary/20 text-primary"
-                          : "bg-muted text-muted-foreground"
-                      }`}>
+                  <tr
+                    key={u.id}
+                    className="border-border/30 hover:bg-muted/20 border-b transition-colors"
+                  >
+                    <td className="text-muted-foreground py-2.5 tabular-nums">#{u.id}</td>
+                    <td className="py-2.5 font-medium">{u.email}</td>
+                    <td className="py-2.5">
+                      <span
+                        className={`rounded px-2 py-1 text-xs font-medium ${
+                          u.role === "ADMIN"
+                            ? "bg-primary/20 text-primary"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
                         {u.role}
                       </span>
                     </td>
-                    <td className="py-3">
-                      {u.role === "admin" ? (
+                    <td className="py-2.5">
+                      {u.role === "ADMIN" ? (
                         <span className="text-muted-foreground text-xs">—</span>
                       ) : (
                         <Select
@@ -147,13 +161,15 @@ export default function AdminPage() {
                           className="text-xs"
                         >
                           <option value="">Sin departamento</option>
-                          {DEPARTMENTS.map(d => (
-                            <option key={d} value={d}>{d}</option>
+                          {DEPARTMENTS.map((d) => (
+                            <option key={d} value={d}>
+                              {d}
+                            </option>
                           ))}
                         </Select>
                       )}
                     </td>
-                    <td className="py-3 text-muted-foreground">
+                    <td className="text-muted-foreground py-2.5">
                       {new Date(u.createdAt).toLocaleDateString("es-ES")}
                     </td>
                   </tr>

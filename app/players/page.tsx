@@ -2,46 +2,21 @@
 
 import { useAuth } from "../context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState, Suspense  } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
 import Link from "next/link";
-
-
-interface Player {
-  id: number;
-  email: string;
-  firstName: string;
-  lastName: string;
-  status: string;
-  riskLevel: string;
-  createdAt: string;
-  _count: { notes: number };
-  kyc: { idDocStatus: string; poaDocStatus: string; sofDocStatus: string } | null;
-  rgLimits: { id: number }[];
-}
-
-const STATUS_LABELS: Record<string, string> = {
-  pending_verification: "Pendiente",
-  active: "Activo",
-  suspended: "Suspendido",
-  self_excluded: "Autoexcluido"
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  pending_verification: "bg-primary/20 text-primary",
-  active: "bg-green-500/20 text-green-400",
-  suspended: "bg-destructive/20 text-destructive",
-  self_excluded: "bg-destructive/20 text-destructive",
-};
+import type { PlayerListItem } from "@/types/player";
+import { PLAYER_STATUS_LABELS, PLAYER_STATUS_COLORS } from "@/lib/constants";
+import { apiFetch, ApiError } from "@/lib/api";
 
 function PlayersContent() {
   const { user, accessToken, loading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [players, setPlayers] = useState<Player[]>([]);
+  const [players, setPlayers] = useState<PlayerListItem[]>([]);
   const [loadingPlayers, setLoadingPlayers] = useState(true);
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -51,20 +26,20 @@ function PlayersContent() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState("");
 
-useEffect(() => {
-  if (loading) return;
-  if (!user) {
-    router.push("/login");
-    return;
-  }
-  const urlSearch = searchParams.get("search");
-  if (urlSearch) {
-    setSearch(urlSearch);
-    fetchPlayers(urlSearch);
-  } else {
-    fetchPlayers();
-  }
-}, [user, loading]);
+  useEffect(() => {
+    if (loading) return;
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+    const urlSearch = searchParams.get("search");
+    if (urlSearch) {
+      setSearch(urlSearch);
+      fetchPlayers(urlSearch);
+    } else {
+      fetchPlayers();
+    }
+  }, [user, loading]);
 
   async function fetchPlayers(searchTerm?: string) {
     try {
@@ -74,6 +49,7 @@ useEffect(() => {
 
       const res = await fetch(url, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
       });
       const data = await res.json();
       setPlayers(data);
@@ -94,27 +70,19 @@ useEffect(() => {
     setCreating(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players`, {
+      await apiFetch("/players", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ email: newEmail, firstName: newFirstName, lastName: newLastName }),
+        accessToken,
+        body: { email: newEmail, firstName: newFirstName, lastName: newLastName },
       });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Error al crear jugador");
-        return;
-      }
 
       setNewEmail("");
       setNewFirstName("");
       setNewLastName("");
       setShowForm(false);
       fetchPlayers();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al crear jugador");
     } finally {
       setCreating(false);
     }
@@ -122,19 +90,19 @@ useEffect(() => {
 
   if (loading || loadingPlayers) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold">Jugadores</h2>
+            <h2 className="font-heading text-2xl font-bold">Jugadores</h2>
             <p className="text-muted-foreground mt-1">Gestión de jugadores registrados</p>
           </div>
           <Button size="sm" onClick={() => setShowForm(!showForm)}>
@@ -170,7 +138,7 @@ useEffect(() => {
                   onChange={(e) => setNewEmail(e.target.value)}
                   required
                 />
-                {error && <p className="text-sm text-destructive">{error}</p>}
+                {error && <p className="text-destructive text-sm">{error}</p>}
                 <Button type="submit" disabled={creating}>
                   {creating ? "Registrando..." : "Registrar"}
                 </Button>
@@ -185,9 +153,17 @@ useEffect(() => {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <Button type="submit" variant="outline">Buscar</Button>
+          <Button type="submit" variant="outline">
+            Buscar
+          </Button>
           {search && (
-            <Button variant="ghost" onClick={() => { setSearch(""); fetchPlayers(); }}>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setSearch("");
+                fetchPlayers();
+              }}
+            >
               Limpiar
             </Button>
           )}
@@ -197,48 +173,68 @@ useEffect(() => {
           <CardContent className="p-0">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left px-6 py-3 text-muted-foreground font-medium">ID</th>
-                  <th className="text-left px-6 py-3 text-muted-foreground font-medium">Nombre</th>
-                  <th className="text-left px-6 py-3 text-muted-foreground font-medium">Email</th>
-                  <th className="text-left px-6 py-3 text-muted-foreground font-medium">Estado</th>
-                  <th className="text-left px-6 py-3 text-muted-foreground font-medium">Notas</th>
-                  <th className="text-left px-6 py-3 text-muted-foreground font-medium">Registro</th>
+                <tr className="border-border/50 border-b">
+                  <th className="text-muted-foreground px-6 py-2.5 text-left font-medium">ID</th>
+                  <th className="text-muted-foreground px-6 py-2.5 text-left font-medium">
+                    Nombre
+                  </th>
+                  <th className="text-muted-foreground px-6 py-2.5 text-left font-medium">Email</th>
+                  <th className="text-muted-foreground px-6 py-2.5 text-left font-medium">
+                    Estado
+                  </th>
+                  <th className="text-muted-foreground px-6 py-2.5 text-left font-medium">Notas</th>
+                  <th className="text-muted-foreground px-6 py-2.5 text-left font-medium">
+                    Registro
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {players.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center text-muted-foreground">
+                    <td colSpan={6} className="text-muted-foreground px-6 py-8 text-center">
                       No se encontraron jugadores
                     </td>
                   </tr>
                 ) : (
                   players.map((player) => (
-                    <tr key={player.id} className="border-b border-border/30 hover:bg-muted/20 transition-colors">
-                      <td className="px-6 py-3 text-muted-foreground">#{player.id}</td>
-                      <td className="px-6 py-3 font-medium">
-                        <Link href={`/players/${player.id}`} className="hover:text-primary transition-colors flex items-center gap-2">
-                         <span>{player.firstName} {player.lastName}</span>
-                       {player.rgLimits.length > 0 && (
-                          <span title="Autoexclusión activa">🚫</span>
-                        )}
-                        {(player.kyc?.idDocStatus === "PENDING" || player.kyc?.poaDocStatus === "PENDING" || player.kyc?.sofDocStatus === "PENDING") && (
-                               <span title="KYC pendiente">📄</span>
-                            )}
-                         {player.riskLevel === "HIGH" && (
-                         <span title="Riesgo alto">⚠️</span>
-                               )}
-                                                   </Link>
+                    <tr
+                      key={player.id}
+                      className="border-border/30 hover:bg-muted/20 border-b transition-colors"
+                    >
+                      <td className="text-muted-foreground px-6 py-2.5 tabular-nums">
+                        #{player.id}
                       </td>
-                      <td className="px-6 py-3 text-muted-foreground">{player.email}</td>
-                      <td className="px-6 py-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${STATUS_COLORS[player.status]}`}>
-                          {STATUS_LABELS[player.status]}
+                      <td className="px-6 py-2.5 font-medium">
+                        <Link
+                          href={`/players/${player.id}`}
+                          className="hover:text-primary flex items-center gap-2 transition-colors"
+                        >
+                          <span>
+                            {player.firstName} {player.lastName}
+                          </span>
+                          {player.rgLimits.length > 0 && (
+                            <span title="Autoexclusión activa">🚫</span>
+                          )}
+                          {(player.kyc?.idDocStatus === "PENDING" ||
+                            player.kyc?.poaDocStatus === "PENDING" ||
+                            player.kyc?.sofDocStatus === "PENDING") && (
+                            <span title="KYC pendiente">📄</span>
+                          )}
+                          {player.riskLevel === "HIGH" && <span title="Riesgo alto">⚠️</span>}
+                        </Link>
+                      </td>
+                      <td className="text-muted-foreground px-6 py-2.5">{player.email}</td>
+                      <td className="px-6 py-2.5">
+                        <span
+                          className={`rounded px-2 py-1 text-xs font-medium ${PLAYER_STATUS_COLORS[player.status]}`}
+                        >
+                          {PLAYER_STATUS_LABELS[player.status]}
                         </span>
                       </td>
-                      <td className="px-6 py-3 text-muted-foreground">{player._count.notes}</td>
-                      <td className="px-6 py-3 text-muted-foreground">
+                      <td className="text-muted-foreground px-6 py-2.5 tabular-nums">
+                        {player._count.notes}
+                      </td>
+                      <td className="text-muted-foreground px-6 py-2.5">
                         {new Date(player.createdAt).toLocaleDateString("es-ES")}
                       </td>
                     </tr>

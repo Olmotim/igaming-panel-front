@@ -19,9 +19,13 @@ export default function Navbar() {
     setSearching(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players?search=${encodeURIComponent(search)}`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/players?search=${encodeURIComponent(search)}`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: "include",
+        },
+      );
       const data = await res.json();
 
       if (data.length === 1) {
@@ -36,31 +40,46 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-6 h-14 flex items-center justify-between gap-4">
+    <nav className="border-border/50 bg-card/50 sticky top-0 z-50 border-b backdrop-blur-sm">
+      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-6">
         <div className="flex items-center gap-6">
-          <Link href="/dashboard" className="text-primary font-bold text-lg tracking-tight whitespace-nowrap">
+          <Link
+            href="/dashboard"
+            className="font-heading text-primary text-lg font-bold tracking-tight whitespace-nowrap"
+          >
             ⬡ iGaming Panel
           </Link>
           <div className="flex items-center gap-4 text-sm">
-            <Link href="/dashboard" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/dashboard"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Dashboard
             </Link>
-            <Link href="/tickets" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/tickets"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Tickets
             </Link>
-            <Link href="/players" className="text-muted-foreground hover:text-foreground transition-colors">
+            <Link
+              href="/players"
+              className="text-muted-foreground hover:text-foreground transition-colors"
+            >
               Jugadores
             </Link>
-            {user?.role === "admin" && (
-              <Link href="/admin" className="text-muted-foreground hover:text-foreground transition-colors">
+            {user?.role === "ADMIN" && (
+              <Link
+                href="/admin"
+                className="text-muted-foreground hover:text-foreground transition-colors"
+              >
                 Admin
               </Link>
             )}
           </div>
         </div>
 
-        <form onSubmit={handleSearch} className="flex-1 max-w-xs">
+        <form onSubmit={handleSearch} className="max-w-xs flex-1">
           <Input
             placeholder="Buscar jugador..."
             value={search}
@@ -71,7 +90,7 @@ export default function Navbar() {
         </form>
 
         <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">{user?.email}</span>
+          <span className="text-muted-foreground text-sm whitespace-nowrap">{user?.email}</span>
           <Button variant="outline" size="sm" onClick={logout}>
             Cerrar sesión
           </Button>

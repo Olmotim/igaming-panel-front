@@ -8,55 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/Select";
 import Navbar from "@/components/Navbar";
-
-interface Comment {
-  id: number;
-  content: string;
-  createdAt: string;
-  author: { id: number; email: string };
-}
-
-interface Ticket {
-  id: number;
-  title: string;
-  description: string;
-  priority: string;
-  status: string;
-  department: string;
-  createdAt: string;
-  resolvedAt: string | null;
-  createdBy: { id: number; email: string };
-  assignedTo: { id: number; email: string } | null;
-  player: { id: number; firstName: string; lastName: string; email: string } | null;
-  comments: Comment[];
-}
-
-
-
-const PRIORITY_COLORS: Record<string, string> = {
-  LOW: "bg-muted text-muted-foreground",
-  MEDIUM: "bg-blue-500/20 text-blue-400",
-  HIGH: "bg-orange-500/20 text-orange-400",
-  URGENT: "bg-destructive/20 text-destructive",
-};
-
-const STATUS_COLORS: Record<string, string> = {
-  OPEN: "bg-blue-500/20 text-blue-400",
-  IN_PROGRESS: "bg-yellow-500/20 text-yellow-400",
-  PENDING_INFO: "bg-orange-500/20 text-orange-400",
-  RESOLVED: "bg-green-500/20 text-green-400",
-  CLOSED: "bg-muted text-muted-foreground",
-};
-
-const STATUS_LABELS: Record<string, string> = {
-  OPEN: "Abierto",
-  IN_PROGRESS: "En progreso",
-  PENDING_INFO: "Esperando info",
-  RESOLVED: "Resuelto",
-  CLOSED: "Cerrado",
-};
-
-const DEPARTMENTS = ["CS", "RISK", "COMPLIANCE", "PAYMENTS", "RG", "SPORTSBOOK", "AML", "SECOND_LINE", "DOCUMENTS"];
+import type { Ticket, TicketStatus } from "@/types/ticket";
+import {
+  TICKET_PRIORITY_COLORS as PRIORITY_COLORS,
+  TICKET_STATUS_COLORS as STATUS_COLORS,
+  TICKET_STATUS_LABELS as STATUS_LABELS,
+} from "@/lib/constants";
+import { apiFetch, ApiError } from "@/lib/api";
 
 export default function TicketPage() {
   const { user, accessToken, loading } = useAuth();
@@ -70,10 +28,16 @@ export default function TicketPage() {
   const [addingComment, setAddingComment] = useState(false);
   const [showReply, setShowReply] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [error, setError] = useState("");
+  const [accessDenied, setAccessDenied] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
     if (loading) return;
-    if (!user) { router.push("/login"); return; }
+    if (!user) {
+      router.push("/login");
+      return;
+    }
     fetchTicket();
   }, [user, loading]);
 
@@ -81,8 +45,20 @@ export default function TicketPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tickets/${ticketId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
       });
-      if (!res.ok) { router.push("/tickets"); return; }
+      if (res.status === 403) {
+        setAccessDenied(true);
+        return;
+      }
+      if (res.status === 404) {
+        setNotFound(true);
+        return;
+      }
+      if (!res.ok) {
+        router.push("/tickets");
+        return;
+      }
       const data = await res.json();
       setTicket(data);
     } finally {
@@ -90,15 +66,18 @@ export default function TicketPage() {
     }
   }
 
-  async function updateStatus(status: string) {
+  async function updateStatus(status: TicketStatus) {
     setUpdatingStatus(true);
+    setError("");
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tickets/${ticketId}/status`, {
+      await apiFetch(`/tickets/${ticketId}/status`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ status }),
+        accessToken,
+        body: { status },
       });
       fetchTicket();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al actualizar el estado");
     } finally {
       setUpdatingStatus(false);
     }
@@ -108,14 +87,17 @@ export default function TicketPage() {
     e.preventDefault();
     if (!newComment.trim()) return;
     setAddingComment(true);
+    setError("");
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tickets/${ticketId}/comments`, {
+      await apiFetch(`/tickets/${ticketId}/comments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ content: newComment }),
+        accessToken,
+        body: { content: newComment },
       });
       setNewComment("");
       fetchTicket();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al añadir el comentario");
     } finally {
       setAddingComment(false);
     }
@@ -123,8 +105,34 @@ export default function TicketPage() {
 
   if (loading || loadingTicket) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Cargando...</p>
+      </div>
+    );
+  }
+
+  if (accessDenied || notFound) {
+    return (
+      <div className="bg-background min-h-screen">
+        <Navbar />
+        <main className="mx-auto max-w-2xl px-6 py-8">
+          <Card>
+            <CardContent className="space-y-3 py-10 text-center">
+              <p className="text-destructive font-medium">
+                {accessDenied ? "No tienes acceso a este ticket" : "Ticket no encontrado"}
+              </p>
+              {accessDenied && (
+                <p className="text-muted-foreground text-sm">
+                  Pertenece a un departamento distinto al tuyo y no eres su creador ni la persona
+                  asignada.
+                </p>
+              )}
+              <Button variant="outline" size="sm" onClick={() => router.push("/tickets")}>
+                Volver a tickets
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
       </div>
     );
   }
@@ -132,40 +140,52 @@ export default function TicketPage() {
   if (!ticket) return null;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
         <div>
-          <button onClick={() => router.push("/tickets")} className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-2">
+          <button
+            onClick={() => router.push("/tickets")}
+            className="text-muted-foreground hover:text-foreground mb-2 text-sm transition-colors"
+          >
             ← Volver a tickets
           </button>
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground text-sm">#{ticket.id}</span>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${PRIORITY_COLORS[ticket.priority]}`}>
+                <span
+                  className={`rounded px-2 py-0.5 text-xs font-medium ${PRIORITY_COLORS[ticket.priority]}`}
+                >
                   {ticket.priority}
                 </span>
-                <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[ticket.status]}`}>
+                <span
+                  className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[ticket.status]}`}
+                >
                   {STATUS_LABELS[ticket.status]}
                 </span>
               </div>
-              <h2 className="text-2xl font-bold">{ticket.title}</h2>
-              <p className="text-sm text-muted-foreground">
-                {ticket.department} · Creado por {ticket.createdBy.email} · {new Date(ticket.createdAt).toLocaleDateString("es-ES")}
+              <h2 className="font-heading text-2xl font-bold">{ticket.title}</h2>
+              <p className="text-muted-foreground text-sm">
+                {ticket.department} · Creado por {ticket.createdBy.email} ·{" "}
+                {new Date(ticket.createdAt).toLocaleDateString("es-ES")}
               </p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
+        {error && <p className="text-destructive text-sm">{error}</p>}
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-4 lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Descripción</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{ticket.description}</p>
+                <p className="text-muted-foreground text-sm whitespace-pre-wrap">
+                  {ticket.description}
+                </p>
               </CardContent>
             </Card>
 
@@ -189,59 +209,68 @@ export default function TicketPage() {
             </Card>
 
             <Card>
-  <CardHeader className="cursor-pointer" onClick={() => setShowReply(!showReply)}>
-    <div className="flex items-center justify-between">
-      <CardTitle className="text-base">Respuesta al cliente</CardTitle>
-      <span className="text-muted-foreground text-sm">{showReply ? "▲" : "▼"}</span>
-    </div>
-  </CardHeader>
-  {showReply && (
-    <CardContent className="space-y-3">
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Para</p>
-        <Input
-          value={ticket.player ? ticket.player.email : ""}
-          readOnly
-          className="bg-muted/30 text-muted-foreground"
-          placeholder="Sin jugador vinculado"
-        />
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Asunto</p>
-        <Input placeholder="Asunto del email..." />
-      </div>
-      <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Mensaje</p>
-        <textarea
-          placeholder="Redacta aquí la respuesta para el cliente..."
-          rows={5}
-          className="w-full text-sm px-3 py-2 rounded-md bg-input border border-border text-foreground resize-none"
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground italic">Funcionalidad de envío próximamente disponible</p>
-        <Button disabled variant="outline" size="sm">Enviar respuesta</Button>
-      </div>
-    </CardContent>
-  )}
-</Card>
+              <CardHeader className="cursor-pointer" onClick={() => setShowReply(!showReply)}>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base">Respuesta al cliente</CardTitle>
+                  <span className="text-muted-foreground text-sm">{showReply ? "▲" : "▼"}</span>
+                </div>
+              </CardHeader>
+              {showReply && (
+                <CardContent className="space-y-3">
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs">Para</p>
+                    <Input
+                      value={ticket.player ? ticket.player.email : ""}
+                      readOnly
+                      className="bg-muted/30 text-muted-foreground"
+                      placeholder="Sin jugador vinculado"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs">Asunto</p>
+                    <Input placeholder="Asunto del email..." />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-muted-foreground text-xs">Mensaje</p>
+                    <textarea
+                      placeholder="Redacta aquí la respuesta para el cliente..."
+                      rows={5}
+                      className="bg-input border-border text-foreground w-full resize-none rounded-md border px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-muted-foreground text-xs italic">
+                      Funcionalidad de envío próximamente disponible
+                    </p>
+                    <Button disabled variant="outline" size="sm">
+                      Enviar respuesta
+                    </Button>
+                  </div>
+                </CardContent>
+              )}
+            </Card>
             <div className="space-y-3">
-              <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
+              <h3 className="text-muted-foreground text-sm font-medium tracking-wide uppercase">
                 Comentarios ({ticket.comments.length})
               </h3>
               {ticket.comments.length === 0 ? (
                 <Card>
                   <CardContent className="py-6 text-center">
-                    <p className="text-sm text-muted-foreground">No hay comentarios todavía.</p>
+                    <p className="text-muted-foreground text-sm">No hay comentarios todavía.</p>
                   </CardContent>
                 </Card>
               ) : (
                 ticket.comments.map((comment) => (
                   <Card key={comment.id}>
-                    <CardContent className="py-4 space-y-1">
+                    <CardContent className="space-y-1 py-4">
                       <p className="text-sm">{comment.content}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {comment.author.email} · {new Date(comment.createdAt).toLocaleDateString("es-ES")} {new Date(comment.createdAt).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" })}
+                      <p className="text-muted-foreground text-xs">
+                        {comment.author.email} ·{" "}
+                        {new Date(comment.createdAt).toLocaleDateString("es-ES")}{" "}
+                        {new Date(comment.createdAt).toLocaleTimeString("es-ES", {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
                       </p>
                     </CardContent>
                   </Card>
@@ -260,11 +289,13 @@ export default function TicketPage() {
                   <p className="text-muted-foreground mb-1">Estado</p>
                   <Select
                     value={ticket.status}
-                    onChange={(e) => updateStatus(e.target.value)}
+                    onChange={(e) => updateStatus(e.target.value as TicketStatus)}
                     className="w-full"
                   >
                     {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <option key={value} value={value}>{label}</option>
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
                     ))}
                   </Select>
                 </div>
@@ -274,7 +305,9 @@ export default function TicketPage() {
                 </div>
                 <div>
                   <p className="text-muted-foreground">Prioridad</p>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${PRIORITY_COLORS[ticket.priority]}`}>
+                  <span
+                    className={`rounded px-2 py-1 text-xs font-medium ${PRIORITY_COLORS[ticket.priority]}`}
+                  >
                     {ticket.priority}
                   </span>
                 </div>
@@ -291,7 +324,9 @@ export default function TicketPage() {
                 {ticket.resolvedAt && (
                   <div>
                     <p className="text-muted-foreground">Resuelto</p>
-                    <p className="font-medium">{new Date(ticket.resolvedAt).toLocaleDateString("es-ES")}</p>
+                    <p className="font-medium">
+                      {new Date(ticket.resolvedAt).toLocaleDateString("es-ES")}
+                    </p>
                   </div>
                 )}
               </CardContent>
@@ -303,7 +338,9 @@ export default function TicketPage() {
                   <CardTitle className="text-base">Jugador vinculado</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  <p className="font-medium">{ticket.player.firstName} {ticket.player.lastName}</p>
+                  <p className="font-medium">
+                    {ticket.player.firstName} {ticket.player.lastName}
+                  </p>
                   <p className="text-muted-foreground">{ticket.player.email}</p>
                   <button
                     onClick={() => router.push(`/players/${ticket.player!.id}`)}

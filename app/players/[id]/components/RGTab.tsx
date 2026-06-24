@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/Select";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface RGLimit {
   id: number;
@@ -42,7 +43,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  ACTIVE: "bg-blue-500/20 text-blue-400",
+  ACTIVE: "bg-primary/20 text-primary",
   EXPIRED: "bg-muted text-muted-foreground",
   CANCELLED: "bg-destructive/20 text-destructive",
 };
@@ -51,6 +52,7 @@ export default function RGTab({ playerId, accessToken }: RGTabProps) {
   const [limits, setLimits] = useState<RGLimit[]>([]);
   const [loadingLimits, setLoadingLimits] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({
     type: "DEPOSIT_LIMIT",
     period: "MONTHLY",
@@ -70,6 +72,7 @@ export default function RGTab({ playerId, accessToken }: RGTabProps) {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players/${playerId}/rg`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
       });
       const data = await res.json();
       setLimits(data);
@@ -80,59 +83,75 @@ export default function RGTab({ playerId, accessToken }: RGTabProps) {
 
   async function addLimit(e: React.FormEvent) {
     e.preventDefault();
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players/${playerId}/rg`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({
-        type: form.type,
-        period: form.type === "DEPOSIT_LIMIT" ? form.period : undefined,
-        amount: form.amount ? parseFloat(form.amount) : undefined,
-        duration: form.duration ? parseInt(form.duration) : undefined,
-        endDate: form.endDate || undefined,
-        coolingOffUntil: form.coolingOffUntil || undefined,
-        excludedUntil: form.excludedUntil || undefined,
-        therapyFlag: form.therapyFlag,
-      }),
-    });
-    setForm({ type: "DEPOSIT_LIMIT", period: "MONTHLY", amount: "", duration: "", endDate: "", coolingOffUntil: "", excludedUntil: "", therapyFlag: false });
-    setShowForm(false);
-    fetchLimits();
+    setError("");
+    try {
+      await apiFetch(`/players/${playerId}/rg`, {
+        method: "POST",
+        accessToken,
+        body: {
+          type: form.type,
+          period: form.type === "DEPOSIT_LIMIT" ? form.period : undefined,
+          amount: form.amount ? parseFloat(form.amount) : undefined,
+          duration: form.duration ? parseInt(form.duration) : undefined,
+          endDate: form.endDate || undefined,
+          coolingOffUntil: form.coolingOffUntil || undefined,
+          excludedUntil: form.excludedUntil || undefined,
+          therapyFlag: form.therapyFlag,
+        },
+      });
+      setForm({
+        type: "DEPOSIT_LIMIT",
+        period: "MONTHLY",
+        amount: "",
+        duration: "",
+        endDate: "",
+        coolingOffUntil: "",
+        excludedUntil: "",
+        therapyFlag: false,
+      });
+      setShowForm(false);
+      fetchLimits();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al añadir el límite");
+    }
   }
 
   async function updateStatus(limitId: number, status: string) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players/rg/${limitId}/status`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ status }),
-    });
-    fetchLimits();
+    setError("");
+    try {
+      await apiFetch(`/players/rg/${limitId}/status`, {
+        method: "PUT",
+        accessToken,
+        body: { status },
+      });
+      fetchLimits();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al actualizar el límite");
+    }
   }
 
   if (loadingLimits) {
     return <p className="text-muted-foreground text-sm">Cargando límites...</p>;
   }
 
-  const activeLimits = limits.filter(l => l.status === "ACTIVE");
-  const hasSelfExclusion = activeLimits.some(l => l.type === "SELF_EXCLUSION");
+  const activeLimits = limits.filter((l) => l.status === "ACTIVE");
+  const hasSelfExclusion = activeLimits.some((l) => l.type === "SELF_EXCLUSION");
 
   return (
     <div className="space-y-4">
+      {error && <p className="text-destructive text-sm">{error}</p>}
       {hasSelfExclusion && (
         <Card className="border-destructive/50">
           <CardContent className="py-3">
-            <p className="text-sm text-destructive font-medium">⚠ Este jugador tiene una autoexclusión activa.</p>
+            <p className="text-destructive text-sm font-medium">
+              ⚠ Este jugador tiene una autoexclusión activa.
+            </p>
           </CardContent>
         </Card>
       )}
 
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{activeLimits.length} límite(s) activo(s)</p>
+        <p className="text-muted-foreground text-sm">{activeLimits.length} límite(s) activo(s)</p>
         <Button size="sm" onClick={() => setShowForm(!showForm)}>
           {showForm ? "Cancelar" : "+ Añadir límite"}
         </Button>
@@ -145,40 +164,78 @@ export default function RGTab({ playerId, accessToken }: RGTabProps) {
           </CardHeader>
           <CardContent>
             <form onSubmit={addLimit} className="space-y-3">
-              <Select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+              <Select
+                value={form.type}
+                onChange={(e) => setForm({ ...form, type: e.target.value })}
+              >
                 {Object.entries(TYPE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
                 ))}
               </Select>
 
               {form.type === "DEPOSIT_LIMIT" && (
                 <div className="grid grid-cols-2 gap-3">
-                  <Select value={form.period} onChange={(e) => setForm({ ...form, period: e.target.value })}>
+                  <Select
+                    value={form.period}
+                    onChange={(e) => setForm({ ...form, period: e.target.value })}
+                  >
                     <option value="DAILY">Diario</option>
                     <option value="WEEKLY">Semanal</option>
                     <option value="MONTHLY">Mensual</option>
                   </Select>
-                  <Input type="number" step="0.01" placeholder="Importe (€)" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+                  <Input
+                    type="number"
+                    step="0.01"
+                    placeholder="Importe (€)"
+                    value={form.amount}
+                    onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                  />
                 </div>
               )}
 
               {form.type === "SESSION_LIMIT" && (
-                <Input type="number" placeholder="Duración (minutos)" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+                <Input
+                  type="number"
+                  placeholder="Duración (minutos)"
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                />
               )}
 
               {form.type === "REALITY_CHECK" && (
-                <Input type="number" placeholder="Cada cuántos minutos avisar" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} />
+                <Input
+                  type="number"
+                  placeholder="Cada cuántos minutos avisar"
+                  value={form.duration}
+                  onChange={(e) => setForm({ ...form, duration: e.target.value })}
+                />
               )}
 
               {form.type === "COOL_OFF" && (
-                <Input type="date" placeholder="Hasta cuándo" value={form.coolingOffUntil} onChange={(e) => setForm({ ...form, coolingOffUntil: e.target.value })} />
+                <Input
+                  type="date"
+                  placeholder="Hasta cuándo"
+                  value={form.coolingOffUntil}
+                  onChange={(e) => setForm({ ...form, coolingOffUntil: e.target.value })}
+                />
               )}
 
               {form.type === "SELF_EXCLUSION" && (
                 <>
-                  <Input type="date" placeholder="Excluido hasta" value={form.excludedUntil} onChange={(e) => setForm({ ...form, excludedUntil: e.target.value })} />
-                  <label className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <input type="checkbox" checked={form.therapyFlag} onChange={(e) => setForm({ ...form, therapyFlag: e.target.checked })} />
+                  <Input
+                    type="date"
+                    placeholder="Excluido hasta"
+                    value={form.excludedUntil}
+                    onChange={(e) => setForm({ ...form, excludedUntil: e.target.value })}
+                  />
+                  <label className="text-muted-foreground flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={form.therapyFlag}
+                      onChange={(e) => setForm({ ...form, therapyFlag: e.target.checked })}
+                    />
                     El jugador está recibiendo terapia / ayuda profesional
                   </label>
                 </>
@@ -205,25 +262,35 @@ export default function RGTab({ playerId, accessToken }: RGTabProps) {
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <p className="font-medium">{TYPE_LABELS[limit.type]}</p>
-                      <span className={`px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[limit.status]}`}>
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${STATUS_COLORS[limit.status]}`}
+                      >
                         {STATUS_LABELS[limit.status]}
                       </span>
                       {limit.therapyFlag && (
-                        <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-400">En terapia</span>
+                        <span className="bg-primary/20 text-primary rounded px-2 py-0.5 text-xs font-medium">
+                          En terapia
+                        </span>
                       )}
                     </div>
-                    <p className="text-sm text-muted-foreground">
-                      {limit.amount && `${limit.amount.toFixed(2)} € (${limit.period === "DAILY" ? "diario" : limit.period === "WEEKLY" ? "semanal" : "mensual"})`}
+                    <p className="text-muted-foreground text-sm">
+                      {limit.amount &&
+                        `${limit.amount.toFixed(2)} € (${limit.period === "DAILY" ? "diario" : limit.period === "WEEKLY" ? "semanal" : "mensual"})`}
                       {limit.duration && `${limit.duration} minutos`}
-                      {limit.coolingOffUntil && `Hasta ${new Date(limit.coolingOffUntil).toLocaleDateString("es-ES")}`}
-                      {limit.excludedUntil && `Excluido hasta ${new Date(limit.excludedUntil).toLocaleDateString("es-ES")}`}
+                      {limit.coolingOffUntil &&
+                        `Hasta ${new Date(limit.coolingOffUntil).toLocaleDateString("es-ES")}`}
+                      {limit.excludedUntil &&
+                        `Excluido hasta ${new Date(limit.excludedUntil).toLocaleDateString("es-ES")}`}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-muted-foreground text-xs">
                       Activado el {new Date(limit.startDate).toLocaleDateString("es-ES")}
                     </p>
                   </div>
                   {limit.status === "ACTIVE" && (
-                    <button onClick={() => updateStatus(limit.id, "CANCELLED")} className="px-2 py-1 rounded text-xs bg-destructive/20 text-destructive hover:bg-destructive/30">
+                    <button
+                      onClick={() => updateStatus(limit.id, "CANCELLED")}
+                      className="bg-destructive/20 text-destructive hover:bg-destructive/30 rounded px-2 py-1 text-xs"
+                    >
                       Desactivar
                     </button>
                   )}

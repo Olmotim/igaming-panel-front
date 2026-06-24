@@ -25,8 +25,8 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_COLORS: Record<string, string> = {
-  SUCCESS: "bg-green-500/20 text-green-400",
-  FAILED: "bg-orange-500/20 text-orange-400",
+  SUCCESS: "bg-success/20 text-success",
+  FAILED: "bg-warning/20 text-warning",
   BLOCKED: "bg-destructive/20 text-destructive",
 };
 
@@ -40,9 +40,13 @@ export default function LoginHistoryTab({ playerId, accessToken }: LoginHistoryT
 
   async function fetchLogins() {
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/players/${playerId}/login-history`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/players/${playerId}/login-history`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: "include",
+        },
+      );
       const data = await res.json();
       setLogins(data);
     } finally {
@@ -59,34 +63,38 @@ export default function LoginHistoryTab({ playerId, accessToken }: LoginHistoryT
       <CardContent className="p-0">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-border/50">
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">Fecha</th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">IP</th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">Dispositivo</th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">Navegador</th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">País</th>
-              <th className="text-left px-4 py-3 text-muted-foreground font-medium">Estado</th>
+            <tr className="border-border/50 border-b">
+              <th className="text-muted-foreground px-4 py-2.5 text-left font-medium">Fecha</th>
+              <th className="text-muted-foreground px-4 py-2.5 text-left font-medium">IP</th>
+              <th className="text-muted-foreground px-4 py-2.5 text-left font-medium">
+                Dispositivo
+              </th>
+              <th className="text-muted-foreground px-4 py-2.5 text-left font-medium">Navegador</th>
+              <th className="text-muted-foreground px-4 py-2.5 text-left font-medium">País</th>
+              <th className="text-muted-foreground px-4 py-2.5 text-left font-medium">Estado</th>
             </tr>
           </thead>
           <tbody>
             {logins.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground">
+                <td colSpan={6} className="text-muted-foreground px-4 py-8 text-center">
                   No hay historial de accesos registrado
                 </td>
               </tr>
             ) : (
               logins.map((entry) => (
-                <tr key={entry.id} className="border-b border-border/30">
-                  <td className="px-4 py-3 text-muted-foreground">
+                <tr key={entry.id} className="border-border/30 border-b">
+                  <td className="text-muted-foreground px-4 py-2.5">
                     {new Date(entry.createdAt).toLocaleString("es-ES")}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs">{entry.ip ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{entry.device ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{entry.browser ?? "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground">{entry.country ?? "—"}</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${STATUS_COLORS[entry.status]}`}>
+                  <td className="px-4 py-2.5 font-mono text-xs">{entry.ip ?? "—"}</td>
+                  <td className="text-muted-foreground px-4 py-2.5">{entry.device ?? "—"}</td>
+                  <td className="text-muted-foreground px-4 py-2.5">{entry.browser ?? "—"}</td>
+                  <td className="text-muted-foreground px-4 py-2.5">{entry.country ?? "—"}</td>
+                  <td className="px-4 py-2.5">
+                    <span
+                      className={`rounded px-2 py-1 text-xs font-medium ${STATUS_COLORS[entry.status]}`}
+                    >
                       {STATUS_LABELS[entry.status]}
                     </span>
                   </td>

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { apiFetch, ApiError } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,34 +22,24 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.message || "Error al registrarse");
-        return;
-      }
-
+      await apiFetch("/auth/register", { method: "POST", body: { email, password } });
       router.push("/login?registered=true");
-    } catch {
-      setError("No se pudo conectar con el servidor");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "No se pudo conectar con el servidor");
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 pointer-events-none" />
-      <div className="relative z-10 w-full max-w-md px-4 space-y-6">
-        <div className="text-center space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">⬡ iGaming Panel</h1>
-          <p className="text-sm text-muted-foreground">Plataforma de gestión para operadores</p>
+    <div className="bg-background relative flex min-h-screen flex-col items-center justify-center overflow-hidden">
+      <div className="from-background via-background to-primary/5 pointer-events-none absolute inset-0 bg-gradient-to-br" />
+      <div className="relative z-10 w-full max-w-md space-y-6 px-4">
+        <div className="space-y-1 text-center">
+          <h1 className="font-heading text-primary text-3xl font-bold tracking-tight">
+            ⬡ iGaming Panel
+          </h1>
+          <p className="text-muted-foreground text-sm">Plataforma de gestión para operadores</p>
         </div>
         <Card className="border-border/50 shadow-2xl">
           <CardHeader>
@@ -79,13 +70,11 @@ export default function RegisterPage() {
                   required
                 />
               </div>
-              {error && (
-                <p className="text-sm text-destructive">{error}</p>
-              )}
+              {error && <p className="text-destructive text-sm">{error}</p>}
               <Button type="submit" className="w-full" disabled={loading}>
                 {loading ? "Registrando..." : "Crear cuenta"}
               </Button>
-              <p className="text-sm text-center text-muted-foreground">
+              <p className="text-muted-foreground text-center text-sm">
                 ¿Ya tienes cuenta?{" "}
                 <Link href="/login" className="text-primary underline underline-offset-4">
                   Inicia sesión

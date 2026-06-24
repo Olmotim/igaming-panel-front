@@ -1,5 +1,9 @@
 "use client";
 
+// Esta ruta no está enlazada desde el Navbar ni desde ningún otro sitio: el módulo
+// workspaces/tasks del backend es scaffolding inicial conservado, no forma parte del
+// flujo principal del backoffice. No se "completa" su integración salvo que se pida explícitamente.
+
 import { useAuth } from "../../context/AuthContext";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -7,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Navbar from "@/components/Navbar";
+import { apiFetch, ApiError } from "@/lib/api";
 
 interface Task {
   id: number;
@@ -51,6 +56,7 @@ export default function WorkspacePage() {
   const [creating, setCreating] = useState(false);
   const [addingMember, setAddingMember] = useState(false);
   const [memberError, setMemberError] = useState("");
+  const [taskError, setTaskError] = useState("");
 
   useEffect(() => {
     if (loading) return;
@@ -65,6 +71,7 @@ export default function WorkspacePage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
       });
       if (!res.ok) {
         router.push("/dashboard");
@@ -81,28 +88,26 @@ export default function WorkspacePage() {
     e.preventDefault();
     if (!newTaskTitle.trim()) return;
     setCreating(true);
+    setTaskError("");
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/tasks`, {
+      await apiFetch(`/workspaces/${workspaceId}/tasks`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({
+        accessToken,
+        body: {
           title: newTaskTitle,
           description: newTaskDesc || undefined,
           assignedTo: newTaskAssignee || undefined,
-        }),
+        },
       });
 
-      if (res.ok) {
-        setNewTaskTitle("");
-        setNewTaskDesc("");
-        setNewTaskAssignee("");
-        setShowTaskForm(false);
-        fetchWorkspace();
-      }
+      setNewTaskTitle("");
+      setNewTaskDesc("");
+      setNewTaskAssignee("");
+      setShowTaskForm(false);
+      fetchWorkspace();
+    } catch (err) {
+      setTaskError(err instanceof ApiError ? err.message : "Error al crear la tarea");
     } finally {
       setCreating(false);
     }
@@ -114,52 +119,51 @@ export default function WorkspacePage() {
     setAddingMember(true);
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/members`, {
+      await apiFetch(`/workspaces/${workspaceId}/members`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ email: newMemberEmail }),
+        accessToken,
+        body: { email: newMemberEmail },
       });
-
-      if (!res.ok) {
-        const data = await res.json();
-        setMemberError(data.message || "Error al añadir miembro");
-        return;
-      }
-
       setNewMemberEmail("");
       setShowMemberForm(false);
       fetchWorkspace();
+    } catch (err) {
+      setMemberError(err instanceof ApiError ? err.message : "Error al añadir miembro");
     } finally {
       setAddingMember(false);
     }
   }
 
   async function updateStatus(taskId: number, status: string) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/tasks/${taskId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${accessToken}`,
-      },
-      body: JSON.stringify({ status }),
-    });
-    fetchWorkspace();
+    setTaskError("");
+    try {
+      await apiFetch(`/workspaces/${workspaceId}/tasks/${taskId}`, {
+        method: "PUT",
+        accessToken,
+        body: { status },
+      });
+      fetchWorkspace();
+    } catch (err) {
+      setTaskError(err instanceof ApiError ? err.message : "Error al actualizar la tarea");
+    }
   }
 
   async function deleteTask(taskId: number) {
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/workspaces/${workspaceId}/tasks/${taskId}`, {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${accessToken}` },
-    });
-    fetchWorkspace();
+    setTaskError("");
+    try {
+      await apiFetch(`/workspaces/${workspaceId}/tasks/${taskId}`, {
+        method: "DELETE",
+        accessToken,
+      });
+      fetchWorkspace();
+    } catch (err) {
+      setTaskError(err instanceof ApiError ? err.message : "Error al eliminar la tarea");
+    }
   }
 
   if (loading || loadingWs) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center">
         <p className="text-muted-foreground">Cargando...</p>
       </div>
     );
@@ -167,26 +171,34 @@ export default function WorkspacePage() {
 
   if (!workspace) return null;
 
-  const userMember = workspace.members.find(m => m.user.id === user?.id);
+  const userMember = workspace.members.find((m) => m.user.id === user?.id);
   const isOwner = userMember?.role === "owner";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="bg-background min-h-screen">
       <Navbar />
-      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-6xl space-y-6 px-6 py-8">
         <div className="flex items-center justify-between">
           <div>
-            <button onClick={() => router.push("/dashboard")} className="text-sm text-muted-foreground hover:text-foreground transition-colors mb-1">
+            <button
+              onClick={() => router.push("/dashboard")}
+              className="text-muted-foreground hover:text-foreground mb-1 text-sm transition-colors"
+            >
               ← Volver al dashboard
             </button>
             <h2 className="text-2xl font-bold">{workspace.name}</h2>
-            <p className="text-muted-foreground text-sm mt-1">
-              {workspace.members.length} miembro{workspace.members.length !== 1 ? "s" : ""} · Tu rol: <span className="text-primary">{userMember?.role}</span>
+            <p className="text-muted-foreground mt-1 text-sm">
+              {workspace.members.length} miembro{workspace.members.length !== 1 ? "s" : ""} · Tu
+              rol: <span className="text-primary">{userMember?.role}</span>
             </p>
           </div>
           <div className="flex gap-2">
             {isOwner && (
-              <Button size="sm" variant="outline" onClick={() => setShowMemberForm(!showMemberForm)}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowMemberForm(!showMemberForm)}
+              >
                 {showMemberForm ? "Cancelar" : "+ Miembro"}
               </Button>
             )}
@@ -195,6 +207,8 @@ export default function WorkspacePage() {
             </Button>
           </div>
         </div>
+
+        {taskError && <p className="text-destructive text-sm">{taskError}</p>}
 
         {showMemberForm && (
           <Card>
@@ -214,7 +228,7 @@ export default function WorkspacePage() {
                   {addingMember ? "Añadiendo..." : "Añadir"}
                 </Button>
               </form>
-              {memberError && <p className="text-sm text-destructive mt-2">{memberError}</p>}
+              {memberError && <p className="text-destructive mt-2 text-sm">{memberError}</p>}
             </CardContent>
           </Card>
         )}
@@ -237,18 +251,20 @@ export default function WorkspacePage() {
                   value={newTaskDesc}
                   onChange={(e) => setNewTaskDesc(e.target.value)}
                 />
-<select
-  value={newTaskAssignee}
-  onChange={(e) => setNewTaskAssignee(e.target.value ? Number(e.target.value) : "")}
-  className="w-full text-sm px-3 py-2 rounded-md bg-muted border border-border text-foreground"
->
-  <option value="" className="bg-card text-foreground">Sin asignar</option>
-  {workspace.members.map((m) => (
-    <option key={m.user.id} value={m.user.id} className="bg-card text-foreground">
-      {m.user.email} ({m.role})
-    </option>
-  ))}
-</select>
+                <select
+                  value={newTaskAssignee}
+                  onChange={(e) => setNewTaskAssignee(e.target.value ? Number(e.target.value) : "")}
+                  className="bg-muted border-border text-foreground w-full rounded-md border px-3 py-2 text-sm"
+                >
+                  <option value="" className="bg-card text-foreground">
+                    Sin asignar
+                  </option>
+                  {workspace.members.map((m) => (
+                    <option key={m.user.id} value={m.user.id} className="bg-card text-foreground">
+                      {m.user.email} ({m.role})
+                    </option>
+                  ))}
+                </select>
                 <Button type="submit" disabled={creating}>
                   {creating ? "Creando..." : "Crear tarea"}
                 </Button>
@@ -257,9 +273,11 @@ export default function WorkspacePage() {
           </Card>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Tareas</h3>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
+            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              Tareas
+            </h3>
             {workspace.tasks.length === 0 ? (
               <Card>
                 <CardContent className="py-8 text-center">
@@ -269,14 +287,14 @@ export default function WorkspacePage() {
             ) : (
               workspace.tasks.map((task) => (
                 <Card key={task.id} className="hover:border-border/80 transition-colors">
-                  <CardContent className="py-4 flex items-center justify-between gap-4">
-                    <div className="space-y-1 flex-1">
+                  <CardContent className="flex items-center justify-between gap-4 py-4">
+                    <div className="flex-1 space-y-1">
                       <p className="font-medium">{task.title}</p>
                       {task.description && (
-                        <p className="text-sm text-muted-foreground">{task.description}</p>
+                        <p className="text-muted-foreground text-sm">{task.description}</p>
                       )}
                       {task.assignee && (
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           Asignada a: <span className="text-primary">{task.assignee.email}</span>
                         </p>
                       )}
@@ -285,7 +303,7 @@ export default function WorkspacePage() {
                       <select
                         value={task.status}
                         onChange={(e) => updateStatus(task.id, e.target.value)}
-                        className={`text-xs px-2 py-1 rounded font-medium border-0 cursor-pointer ${STATUS_COLORS[task.status]}`}
+                        className={`cursor-pointer rounded border-0 px-2 py-1 text-xs font-medium ${STATUS_COLORS[task.status]}`}
                       >
                         <option value="pending">Pendiente</option>
                         <option value="in_progress">En progreso</option>
@@ -294,7 +312,7 @@ export default function WorkspacePage() {
                       {isOwner && (
                         <button
                           onClick={() => deleteTask(task.id)}
-                          className="text-xs text-muted-foreground hover:text-destructive transition-colors"
+                          className="text-muted-foreground hover:text-destructive text-xs transition-colors"
                         >
                           Eliminar
                         </button>
@@ -307,19 +325,23 @@ export default function WorkspacePage() {
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">Miembros</h3>
+            <h3 className="text-muted-foreground text-sm font-semibold tracking-wide uppercase">
+              Miembros
+            </h3>
             <Card>
-              <CardContent className="py-4 space-y-3">
+              <CardContent className="space-y-3 py-4">
                 {workspace.members.map((m) => (
                   <div key={m.user.id} className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{m.user.email}</p>
                     </div>
-                    <span className={`text-xs px-2 py-1 rounded font-medium ${
-                      m.role === "owner"
-                        ? "bg-primary/20 text-primary"
-                        : "bg-muted text-muted-foreground"
-                    }`}>
+                    <span
+                      className={`rounded px-2 py-1 text-xs font-medium ${
+                        m.role === "owner"
+                          ? "bg-primary/20 text-primary"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
                       {m.role}
                     </span>
                   </div>

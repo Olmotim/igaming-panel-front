@@ -1,6 +1,6 @@
 # iGaming Panel — Frontend
 
-Web interface for an iGaming backoffice panel, built so support, KYC, and admin teams can manage players, support tickets, and internal workspaces. Built with Next.js and consumes the [igaming-panel](https://github.com/Olmotim/igaming-panel) API (NestJS + PostgreSQL).
+Web interface for an iGaming backoffice panel, built so support, KYC, and admin teams can manage players and support tickets. Built with Next.js and consumes the [igaming-panel](https://github.com/Olmotim/igaming-panel) API (NestJS + PostgreSQL).
 
 Backend repository: [igaming-panel](https://github.com/Olmotim/igaming-panel)
 
@@ -28,8 +28,9 @@ password: Demo1234!
 - **Dashboard** with general metrics
 - **Player management**: player list, individual profile with tabs for account, KYC, payments, bonuses, Responsible Gaming (RG), and login history
 - **Support tickets**: list, detail view, and comments
-- **Workspaces**: teams with members and tasks
 - **Admin panel**: user and department management
+
+> The backend keeps a `workspaces`/`tasks` module (teams with members and tasks) as initial scaffolding. The page exists in this frontend but is not linked from the Navbar or anywhere else, since it's not part of the active backoffice flow.
 
 ## Environment variables
 
