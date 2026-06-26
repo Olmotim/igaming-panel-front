@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import type { AuthUser } from "@/types/user";
 
@@ -19,8 +19,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const sessionRestored = useRef(false);
 
   useEffect(() => {
+    if (sessionRestored.current) return;
+    sessionRestored.current = true;
     restoreSession();
   }, []);
 
